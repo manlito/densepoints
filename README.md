@@ -1,4 +1,4 @@
-# Densification
+# DensePoints
 
 ## THIS IS A NON WORKING AND INCOMPLETE PROJECT
 
