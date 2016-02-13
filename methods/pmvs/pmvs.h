@@ -18,9 +18,15 @@ namespace DensePoints {
       std::shared_ptr<PointCloudXYZRGBNormal> GetPointCloud();
 
     protected:
+
+      void InsertSeeds();
+      void Expand();
+      void Filter();
+
       Options options_;
       std::vector<ProjectionMatrix> projection_matrices_;
       std::vector<cv::Mat> images_;
+      PointCloudXYZRGBNormal cloud_;
     };
   }
 }
