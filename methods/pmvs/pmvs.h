@@ -11,7 +11,7 @@ namespace DensePoints {
   namespace PMVS {
     class PMVS {
     public:
-      PMVS(const Options &options) : options_(options) {}
+      PMVS(const Options &options = Options()) : options_(options) {}
       void AddCamera(const ProjectionMatrix &projection_matrix,
                      const std::string filename);
       bool Run();

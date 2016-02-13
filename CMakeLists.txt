@@ -14,7 +14,7 @@ set(DENSIFITION_VERSION_PATCH 0)
 
 # Dependency: OpenCV.
 # We use OpenCV as the backend for all image operations.
-find_package(OpenCV COMPONENTS calib3d imgproc highgui core REQUIRED)
+find_package(OpenCV COMPONENTS features2d calib3d imgproc highgui core REQUIRED)
 message(STATUS "OpenCVIncludes: ${OpenCV_INCLUDE_DIRS}")
 message(STATUS "OpenCVLibs: ${OpenCV_LIBS}")
 
@@ -23,6 +23,14 @@ message(STATUS "OpenCVLibs: ${OpenCV_LIBS}")
 find_package(PCL COMPONENTS filter geometry common REQUIRED)
 message(STATUS "PCLIncludes: ${PCL_INCLUDE_DIRS}")
 message(STATUS "PCLLibs: ${PCL_LIBRARIES}")
+
+# Dependency: Threads
+find_package(Threads)
+message(STATUS "ThreadsLibs: ${CMAKE_THREAD_LIBS_INIT}")
+
+# Common libraries all projects need to be linked with
+set(DENSEPOINTS_DEFINITIONS -DELPP_THREAD_SAFE -DELPP_FORCE_USE_STD_THREAD)
+set(DENSEPOINTS_LIBS ${CMAKE_THREAD_LIBS_INIT})
 
 # Default build type: Release
 if (NOT CMAKE_BUILD_TYPE AND NOT MSVC)
@@ -34,7 +42,9 @@ endif ()
 include_directories(
     ${PCL_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party"
     "${CMAKE_CURRENT_SOURCE_DIR}/modules"
+    "${CMAKE_CURRENT_SOURCE_DIR}/methods"
 )
 
 # Libraries most likely to be frozen
