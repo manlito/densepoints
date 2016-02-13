@@ -18,24 +18,24 @@ find_package(OpenCV COMPONENTS calib3d imgproc highgui core REQUIRED)
 message(STATUS "OpenCVIncludes: ${OpenCV_INCLUDE_DIRS}")
 message(STATUS "OpenCVLibs: ${OpenCV_LIBS}")
 
-# Dependency: CGAL.
+# Dependency: PCL.
 # For point set efficient search
-find_package(CGAL COMPONENTS core REQUIRED)
-message(STATUS "CGALUseFile: ${CGAL_USE_FILE}")
-include (${CGAL_USE_FILE})
-
-# Dependency: TBB (Optional)
-find_package(TBB QUIET)
-if(TBB_FOUND AND NOT APPLE)
-    include(${TBB_USE_FILE})
-    list(APPEND CGAL_3RD_PARTY_LIBRARIES ${TBB_LIBRARIES})
-endif()
-message(STATUS "CGALLibs: ${CGAL_LIBRARIES} ${GMP_LIBRARIES} ${MPFR_LIBRARIES}")
+find_package(PCL COMPONENTS filter geometry common REQUIRED)
+message(STATUS "PCLIncludes: ${PCL_INCLUDE_DIRS}")
+message(STATUS "PCLLibs: ${PCL_LIBRARIES}")
 
 # Default build type: Release
 if (NOT CMAKE_BUILD_TYPE AND NOT MSVC)
   set(CMAKE_BUILD_TYPE "Release")
 endif ()
+
+
+# DensePoints include directories
+include_directories(
+    ${PCL_INCLUDE_DIRS}
+    ${OpenCV_INCLUDE_DIRS}
+    "${CMAKE_CURRENT_SOURCE_DIR}/modules"
+)
 
 # Libraries most likely to be frozen
 add_subdirectory(third_party)

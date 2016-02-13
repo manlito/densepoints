@@ -2,7 +2,8 @@
 #define DENSEPOINTS_PMVS_PMVS
 
 #include <vector>
-#include "modules/core/types.h"
+#include <memory>
+#include "core/types.h"
 #include "options.h"
 #include "opencv2/core.hpp"
 
@@ -14,8 +15,7 @@ namespace DensePoints {
       void AddCamera(const ProjectionMatrix &projection_matrix,
                      const std::string filename);
       bool Run();
-      void GetPointCloud(std::vector<Point3Normal> &points_with_normal,
-                         std::vector<Color> &colors);
+      std::shared_ptr<PointCloudXYZRGBNormal> GetPointCloud();
 
     protected:
       Options options_;
@@ -25,4 +25,4 @@ namespace DensePoints {
   }
 }
 
-#endif DENSEPOINTS_PMVS_PMVS
+#endif // DENSEPOINTS_PMVS_PMVS

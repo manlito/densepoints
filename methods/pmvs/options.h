@@ -22,4 +22,4 @@ namespace DensePoints {
   }
 }
 
-#endif DENSEPOINTS_PMVS_OPTIONS
+#endif // DENSEPOINTS_PMVS_OPTIONS

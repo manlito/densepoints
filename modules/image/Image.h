@@ -4,4 +4,4 @@
 #include <string>
 #include <opencv2/core.hpp>
 
-#endif DENSEPOINTS_IMAGE
+#endif //DENSEPOINTS_IMAGE
