@@ -33,6 +33,7 @@ namespace DensePoints {
 
       void DetectFeatures();
       void FilterKeypoints();
+      void ComputeDescriptors();
 
       std::vector<View> &views_;
       std::vector<std::vector<cv::KeyPoint>> keypoints_;

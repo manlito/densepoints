@@ -14,24 +14,28 @@ void Seed::DetectFeatures()
     size_t job = current_job_++;
     LOG(INFO) << "Detecting keypoints for image index " << job;
 
-    cv::Mat grayscale_image;
-    cv::cvtColor(views_[job].GetImage(), grayscale_image, cv::COLOR_BGR2GRAY);
+    cv::Mat &image = views_[job].GetImage();
     std::vector<cv::KeyPoint> keypoints;
 
     switch (detector_type_) {
       case DetectorType::AKAZE: {
           cv::Ptr<cv::Feature2D> akaze = cv::AKAZE::create();
-          akaze->detect(grayscale_image, keypoints);
+          akaze->detect(image, keypoints);
           break;
         }
       default: {
           cv::Ptr<cv::Feature2D> fast = cv::ORB::create(40000);
-          fast->detect(grayscale_image, keypoints);
+          fast->detect(image, keypoints);
         }
     }
-    cv::drawKeypoints(grayscale_image, keypoints, grayscale_image);
+
+#ifdef DEBUG_PMVS_SEEDS
+    cv::Mat grayscale_image;
+    cv::cvtColor(views_[job].GetImage(), grayscale_image, cv::COLOR_BGR2GRAY);
+    cv::drawKeypoints(image, keypoints, image);
     cv::imwrite(std::string("kp_") + std::to_string(job) + std::string(".jpg"), grayscale_image);
     LOG(INFO) << keypoints.size() << " Keypoints for image index " << job;
+#endif
 
     // Save the result
     mutex_.lock();
@@ -89,16 +93,45 @@ void Seed::FilterKeypoints()
       keypoints.push_back(keypoints_[job][keypoint_index]);
     }
 
-    // Debugging
+#ifdef DEBUG_PMVS_SEEDS
     cv::Mat grayscale_image;
     cv::cvtColor(views_[job].GetImage(), grayscale_image, cv::COLOR_BGR2GRAY);
     cv::drawKeypoints(grayscale_image, keypoints, grayscale_image);
     cv::imwrite(std::string("kp_") + std::to_string(job) + std::string("_f.jpg"), grayscale_image);
     LOG(INFO) << "Best keypoints: " << best_keypoints.size();
+#endif
 
     // Save the result
     mutex_.lock();
     keypoints_[job] = keypoints;
+    mutex_.unlock();
+  }
+}
+
+void Seed::ComputeDescriptors()
+{
+  while (current_job_ < views_.size()) {
+    size_t job = current_job_++;
+    LOG(INFO) << "Computing descriptors for image index " << job;
+
+    cv::Mat &image = views_[job].GetImage();
+    std::vector<cv::KeyPoint> &keypoints = keypoints_[job];
+    cv::Mat descriptors;
+    switch (detector_type_) {
+      case DetectorType::AKAZE: {
+          cv::Ptr<cv::Feature2D> akaze = cv::AKAZE::create();
+          akaze->compute(image, keypoints, descriptors);
+          break;
+        }
+      default: {
+          cv::Ptr<cv::Feature2D> fast = cv::ORB::create(40000);
+          fast->compute(image, keypoints, descriptors);
+        }
+    }
+
+    // Save the result
+    mutex_.lock();
+    descriptors_[job] = descriptors;
     mutex_.unlock();
   }
 }
@@ -117,6 +150,10 @@ void Seed::GenerateSeeds(std::vector<Vector3> &seeds)
   // Get the best keypoints
   current_job_ = 0;
   Threading::Run(thread_count_, &Seed::FilterKeypoints, this);
+
+  // Compute descriptors
+  current_job_ = 0;
+  Threading::Run(thread_count_, &Seed::ComputeDescriptors, this);
 
   LOG(INFO) << "Done";
 }

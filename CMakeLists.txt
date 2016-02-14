@@ -6,7 +6,8 @@ project(densification)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/build/cmake")
 
 # Options
-option (Densification_USE_OPENMP "Enable OpenMP for multicore usage" ON)
+option(DENSEPOINTS_USE_OPENMP "Enable OpenMP for multicore usage" ON)
+option(DENSEPOINTS_DEBUG_PMVS_SEEDS "Print images for visualization on PMVS::Seed" OFF)
 
 set(DENSIFITION_VERSION_MAJOR 0)
 set(DENSIFITION_VERSION_MINOR 1)
@@ -31,6 +32,10 @@ message(STATUS "ThreadsLibs: ${CMAKE_THREAD_LIBS_INIT}")
 # Common libraries all projects need to be linked with
 set(DENSEPOINTS_DEFINITIONS -std=c++11 -DELPP_THREAD_SAFE -DELPP_FORCE_USE_STD_THREAD)
 set(DENSEPOINTS_LIBS ${CMAKE_THREAD_LIBS_INIT} stlplus)
+if(DENSEPOINTS_DEBUG_PMVS_SEEDS)
+    message(STATUS "DEBUG: PMVS::Seeds enabled")
+    set(DENSEPOINTS_DEFINITIONS ${DENSEPOINTS_DEFINITIONS} -DDEBUG_PMVS_SEEDS)
+endif()
 
 # Default build type: Release
 if (NOT CMAKE_BUILD_TYPE AND NOT MSVC)
