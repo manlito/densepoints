@@ -1,5 +1,4 @@
 project(densify)
-add_definitions(-std=c++11)
 
 add_executable(${PROJECT_NAME} main.cpp)
 
@@ -11,7 +10,7 @@ target_link_libraries(${PROJECT_NAME} ${PCL_COMMON_LIBRARIES})
 add_definitions(${PCL_DEFINITIONS})
 
 # DensePoints::PMVS
-target_link_libraries(${PROJECT_NAME} "pmvs")
+target_link_libraries(${PROJECT_NAME} pmvs densepoints_io)
 
 # Densepoints common definitions and libraries
 target_link_libraries(${PROJECT_NAME} ${DENSEPOINTS_LIBS})

@@ -12,8 +12,7 @@ namespace DensePoints {
     class PMVS {
     public:
       PMVS(const Options &options = Options()) : options_(options) {}
-      void AddCamera(const ProjectionMatrix &projection_matrix,
-                     const std::string filename);
+      void AddCamera(View view);
       bool Run();
       std::shared_ptr<PointCloudXYZRGBNormal> GetPointCloud();
 
@@ -24,8 +23,7 @@ namespace DensePoints {
       void Filter();
 
       Options options_;
-      std::vector<ProjectionMatrix> projection_matrices_;
-      std::vector<cv::Mat> images_;
+      std::vector<View> views_;
       PointCloudXYZRGBNormal cloud_;
     };
   }

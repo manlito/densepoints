@@ -1,17 +1,18 @@
 #include <opencv2/imgcodecs.hpp>
+#include "easylogging/easylogging.h"
 #include "pmvs.h"
 #include "seed.h"
 
 using namespace DensePoints::PMVS;
 
-void PMVS::AddCamera(const ProjectionMatrix &projection_matrix,
-                     const std::string filename)
+void PMVS::AddCamera(View view)
 {
-  cv::Mat image = cv::imread(filename);
+  view.Load();
 
-  if (!image.empty()) {
-
+  if (view.ImageLoaded()) {
+    views_.push_back(view);
   } else {
+    LOG(WARNING) << "View with image " << view.GetImageFilename() << " discarded";
   }
 }
 
@@ -25,6 +26,6 @@ bool PMVS::Run()
 void PMVS::InsertSeeds()
 {
   std::vector<Vector3> seeds;
-  Seed seed;
-  seed.GenerateSeeds(images_, seeds);
+  Seed seed(views_);
+  seed.GenerateSeeds(seeds);
 }
