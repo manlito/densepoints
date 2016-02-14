@@ -3,6 +3,8 @@
 
 #include <vector>
 #include "cereal/cereal.hpp"
+#include "stlplus/file_system.hpp"
+#include "core/types.h"
 
 namespace DensePoints {
   namespace IO {
@@ -29,10 +31,9 @@ namespace DensePoints {
     public:
       JSONReader(std::string filename);
       std::string GetImagesPath();
-      std::vector<ViewArchive> GetViews();
+      std::vector<View> GetViews();
     protected:
-      std::string images_path_;
-      std::vector<ViewArchive> views_;
+      std::vector<View> views_;
     };
 
   }
