@@ -6,3 +6,6 @@ add_library(${PROJECT_NAME} ${DENSEPOINTS_CORE_SOURCES})
 
 find_package(Eigen REQUIRED)
 include_directories(EIGEN_INCLUDE_DIRS)
+
+# OpenCV
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS})
