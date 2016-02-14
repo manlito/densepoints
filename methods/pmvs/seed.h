@@ -15,7 +15,7 @@ namespace DensePoints {
     public:
       Seed(std::vector<View> &views,
            size_t thread_count = 6,
-           DetectorType detector_type = DetectorType::ORB,
+           DetectorType detector_type = DetectorType::AKAZE,
            size_t cell_size = 32,
            size_t max_keypoints_per_cell = 4) :
         views_(views),
@@ -32,6 +32,7 @@ namespace DensePoints {
       std::mutex mutex_;
 
       void DetectFeatures();
+      void FilterKeypoints();
 
       std::vector<View> &views_;
       std::vector<std::vector<cv::KeyPoint>> keypoints_;

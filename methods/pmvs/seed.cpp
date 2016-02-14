@@ -19,12 +19,12 @@ void Seed::DetectFeatures()
     switch (detector_type_) {
       case DetectorType::AKAZE: {
           cv::Ptr<cv::Feature2D> akaze = cv::AKAZE::create();
-          akaze->detectAndCompute(grayscale_image, cv::Mat(), keypoints, descriptors);
+          akaze->detect(grayscale_image, keypoints);
           break;
         }
       default: {
           cv::Ptr<cv::Feature2D> fast = cv::ORB::create(20000);
-          fast->detectAndCompute(grayscale_image, cv::Mat(), keypoints, descriptors);
+          fast->detect(grayscale_image, keypoints);
         }
     }
     LOG(INFO) << keypoints.size() << " Keypoints for image index " << job;
@@ -37,20 +37,30 @@ void Seed::DetectFeatures()
   }
 }
 
+void Seed::FilterKeypoints()
+{
+  while (current_job_ < views_.size()) {
+    size_t job = current_job_++;
+    LOG(INFO) << "Selecting best keypoints for image index " << job;
+  }
+}
+
 void Seed::GenerateSeeds(std::vector<Vector3> &seeds)
 {
-  // Detect keypoints
-  current_job_ = 0;
 
   // Reserve space where to put keypoints and descriptors
   keypoints_.resize(views_.size());
   descriptors_.resize(views_.size());
 
-  for (size_t i = 0; i < thread_count_; ++i) {
-    threads_.push_back(std::thread(&Seed::DetectFeatures, this));
-  }
-  for (std::thread &thread : threads_) {
-    thread.join();
-  }
+  // Detect keypoints
+  current_job_ = 0;
+  Threading::Run(thread_count_, &Seed::DetectFeatures, this);
+
+  // Get the best keypoints
+  current_job_ = 0;
+  Threading::Run(thread_count_, &Seed::FilterKeypoints, this);
+
+  //
+
   LOG(INFO) << "Done";
 }

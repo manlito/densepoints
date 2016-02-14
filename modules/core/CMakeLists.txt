@@ -9,3 +9,7 @@ include_directories(EIGEN_INCLUDE_DIRS)
 
 # OpenCV
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS})
+
+# Densepoints common definitions and libraries
+target_link_libraries(${PROJECT_NAME} ${DENSEPOINTS_LIBS})
+add_definitions(${DENSEPOINTS_DEFINITIONS})
