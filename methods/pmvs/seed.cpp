@@ -8,7 +8,7 @@
 
 using namespace DensePoints::PMVS;
 
-void Seed::DetectFeatures()
+void Seed::DetectKeypoints()
 {
   while (current_job_ < views_.size()) {
     size_t job = current_job_++;
@@ -124,7 +124,7 @@ void Seed::ComputeDescriptors()
           break;
         }
       default: {
-          cv::Ptr<cv::Feature2D> fast = cv::ORB::create(40000);
+          cv::Ptr<cv::Feature2D> fast = cv::ORB::create();
           fast->compute(image, keypoints, descriptors);
         }
     }
@@ -136,6 +136,56 @@ void Seed::ComputeDescriptors()
   }
 }
 
+void Seed::MatchKeypoints()
+{
+  while (permutation_available_) {
+    // Get the permutation run
+    std::vector<size_t> indices;
+
+    mutex_image_pairs_.lock();
+    // Check if there are pending jobs
+    if (permutation_available_) {
+      for (size_t i = 0; i < views_.size(); ++i) {
+        if (image_pairs_[i]) {
+          indices.push_back(i);
+        }
+      }
+      permutation_available_ = std::prev_permutation(image_pairs_.begin(), image_pairs_.end());
+      // Prepare the next permutation
+      LOG(INFO) << "Matching for pair indices : " << indices[0] << " " << indices[1];
+    }
+    mutex_image_pairs_.unlock();
+
+    std::vector<cv::DMatch> matches;
+    cv::FlannBasedMatcher matcher;
+    matcher = cv::FlannBasedMatcher(new cv::flann::LshIndexParams(12, 20, 2));
+    matcher.match(descriptors_[indices[0]], descriptors_[indices[1]], matches);
+
+#ifdef DEBUG_PMVS_SEEDS
+    cv::Mat grayscale_image_1;
+    cv::Mat grayscale_image_2;
+    cv::Mat output_image;
+    cv::cvtColor(views_[indices[0]].GetImage(), grayscale_image_1, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(views_[indices[1]].GetImage(), grayscale_image_2, cv::COLOR_BGR2GRAY);
+    cv::drawMatches(grayscale_image_1, keypoints_[indices[0]],
+        grayscale_image_2, keypoints_[indices[1]],
+        matches, output_image);
+    cv::imwrite(std::string("matches_") + std::to_string(indices[0]) + "_"
+        + std::to_string(indices[1]) + std::string("_f.jpg"), output_image);
+#endif
+
+    // Save the result
+    mutex_.lock();
+    //descriptors_[job] = descriptors;
+    mutex_.unlock();
+
+    // Exit if there is not more jobs
+    if (!permutation_available_) {
+      break;
+    }
+  };
+}
+
 void Seed::GenerateSeeds(std::vector<Vector3> &seeds)
 {
 
@@ -145,7 +195,7 @@ void Seed::GenerateSeeds(std::vector<Vector3> &seeds)
 
   // Detect keypoints
   current_job_ = 0;
-  Threading::Run(thread_count_, &Seed::DetectFeatures, this);
+  Threading::Run(thread_count_, &Seed::DetectKeypoints, this);
 
   // Get the best keypoints
   current_job_ = 0;
@@ -154,6 +204,14 @@ void Seed::GenerateSeeds(std::vector<Vector3> &seeds)
   // Compute descriptors
   current_job_ = 0;
   Threading::Run(thread_count_, &Seed::ComputeDescriptors, this);
+
+  // Compute matches
+  permutation_available_ = true;
+  image_pairs_.resize(views_.size());
+  std::fill(image_pairs_.begin(), image_pairs_.end() - views_.size() + 2, true);
+  //Threading::Run(thread_count_, &Seed::MatchKeypoints, this);
+  Threading::Run(thread_count_, &Seed::MatchKeypoints, this);
+
 
   LOG(INFO) << "Done";
 }

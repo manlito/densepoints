@@ -26,18 +26,25 @@ namespace DensePoints {
 
       void GenerateSeeds(std::vector<Vector3> &seeds);
     protected:
-      // Thread facility
+      // Thread facility: Shared
       std::vector<std::thread> threads_;
       std::atomic<size_t> current_job_;
       std::mutex mutex_;
 
-      void DetectFeatures();
+      // Thread facility: Matching
+      bool permutation_available_;
+      std::mutex mutex_image_pairs_;
+      std::vector<bool> image_pairs_;
+
+      void DetectKeypoints();
       void FilterKeypoints();
       void ComputeDescriptors();
+      void MatchKeypoints();
 
       std::vector<View> &views_;
       std::vector<std::vector<cv::KeyPoint>> keypoints_;
       std::vector<cv::Mat> descriptors_;
+      std::vector<cv::DMatch> matches_;
 
       DetectorType detector_type_;
       size_t thread_count_;
