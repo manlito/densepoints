@@ -5,16 +5,18 @@
 #include "easylogging/easylogging.h"
 #include "seed.h"
 #include "core/grid.h"
+#include <omp.h>
 
 using namespace DensePoints::PMVS;
 
 void Seed::DetectKeypoints()
 {
-  while (current_job_ < views_.size()) {
-    size_t job = current_job_++;
-    LOG(INFO) << "Detecting keypoints for image index " << job;
+#pragma omp parallel for
+  for (size_t view_index = 0; view_index < views_.size(); ++view_index) {
+    LOG(INFO) << "Detecting keypoints for image " << view_index;
 
-    cv::Mat &image = views_[job].GetImage();
+    cv::Mat image;
+    views_[view_index].GetImage().copyTo(image);
     std::vector<cv::KeyPoint> keypoints;
 
     switch (detector_type_) {
@@ -31,26 +33,27 @@ void Seed::DetectKeypoints()
 
 #ifdef DEBUG_PMVS_SEEDS
     cv::Mat grayscale_image;
-    cv::cvtColor(views_[job].GetImage(), grayscale_image, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(views_[view_index].GetImage(), grayscale_image, cv::COLOR_BGR2GRAY);
     cv::drawKeypoints(image, keypoints, image);
-    cv::imwrite(std::string("kp_") + std::to_string(job) + std::string(".jpg"), grayscale_image);
-    LOG(INFO) << keypoints.size() << " Keypoints for image index " << job;
+    cv::imwrite(std::string("kp_") + std::to_string(view_index) + std::string(".jpg"), grayscale_image);
+    LOG(INFO) << keypoints.size() << " Keypoints for image index " << view_index;
 #endif
 
-    // Save the result
-    mutex_.lock();
-    keypoints_[job] = keypoints;
-    mutex_.unlock();
+#pragma omp critical
+    {
+      // Save the result
+      keypoints_[view_index] = keypoints;
+    }
   }
 }
 
 void Seed::FilterKeypoints()
 {
-  while (current_job_ < views_.size()) {
-    size_t job = current_job_++;
-    LOG(INFO) << "Selecting best keypoints for image index " << job;
+#pragma omp parallel for
+  for (size_t view_index = 0; view_index < views_.size(); ++view_index) {
+    LOG(INFO) << "Selecting best keypoints for image index " << view_index;
 
-    Grid grid(cell_size_, views_[job].GetImage().cols, views_[job].GetImage().rows);
+    Grid grid(cell_size_, views_[view_index].GetImage().cols, views_[view_index].GetImage().rows);
 
     // Put each keypoint in its cell. We will keep only keypoint indexes
     std::vector<std::vector<size_t>> keypoints_grid(grid.Size());
@@ -58,7 +61,7 @@ void Seed::FilterKeypoints()
 
     // Map each keypoint to the cell in the grid
     size_t index = 0;
-    for (const cv::KeyPoint &keypoint : keypoints_[job]) {
+    for (const cv::KeyPoint &keypoint : keypoints_[view_index]) {
       const size_t cell_xy = grid.CellXY(keypoint.pt.x, keypoint.pt.y);
       keypoints_grid[cell_xy].push_back(index);
       ++index;
@@ -69,7 +72,7 @@ void Seed::FilterKeypoints()
     for (const std::vector<size_t> &cell : keypoints_grid) {
       std::vector<float> responses;
       for (const size_t &keypoint_index : cell) {
-        responses.push_back(keypoints_[job][keypoint_index].response);
+        responses.push_back(keypoints_[view_index][keypoint_index].response);
       }
       if (responses.size() > 0) {
         size_t sort_up_to = std::min(responses.size(), max_keypoints_per_cell_);
@@ -90,32 +93,33 @@ void Seed::FilterKeypoints()
     }
     std::vector<cv::KeyPoint> keypoints;
     for (const size_t &keypoint_index : best_keypoints) {
-      keypoints.push_back(keypoints_[job][keypoint_index]);
+      keypoints.push_back(keypoints_[view_index][keypoint_index]);
     }
 
 #ifdef DEBUG_PMVS_SEEDS
     cv::Mat grayscale_image;
-    cv::cvtColor(views_[job].GetImage(), grayscale_image, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(views_[view_index].GetImage(), grayscale_image, cv::COLOR_BGR2GRAY);
     cv::drawKeypoints(grayscale_image, keypoints, grayscale_image);
-    cv::imwrite(std::string("kp_") + std::to_string(job) + std::string("_f.jpg"), grayscale_image);
+    cv::imwrite(std::string("kp_") + std::to_string(view_index) + std::string("_f.jpg"), grayscale_image);
     LOG(INFO) << "Best keypoints: " << best_keypoints.size();
 #endif
 
-    // Save the result
-    mutex_.lock();
-    keypoints_[job] = keypoints;
-    mutex_.unlock();
+#pragma omp critical
+    {
+      // Save the result
+      keypoints_[view_index] = keypoints;
+    }
   }
 }
 
 void Seed::ComputeDescriptors()
 {
-  while (current_job_ < views_.size()) {
-    size_t job = current_job_++;
-    LOG(INFO) << "Computing descriptors for image index " << job;
+#pragma omp parallel for
+  for (size_t view_index = 0; view_index < views_.size(); ++view_index) {
+    LOG(INFO) << "Computing descriptors for image index " << view_index;
 
-    cv::Mat &image = views_[job].GetImage();
-    std::vector<cv::KeyPoint> &keypoints = keypoints_[job];
+    cv::Mat &image = views_[view_index].GetImage();
+    std::vector<cv::KeyPoint> &keypoints = keypoints_[view_index];
     cv::Mat descriptors;
     switch (detector_type_) {
       case DetectorType::AKAZE: {
@@ -129,61 +133,65 @@ void Seed::ComputeDescriptors()
         }
     }
 
-    // Save the result
-    mutex_.lock();
-    descriptors_[job] = descriptors;
-    mutex_.unlock();
+#pragma omp critical
+    {
+      // Save the result
+      descriptors_[view_index] = descriptors;
+    }
   }
 }
 
-void Seed::MatchKeypoints()
+void Seed::BuilPairsList(ImagesPairsList &pairs_list)
 {
-  while (permutation_available_) {
-    // Get the permutation run
-    std::vector<size_t> indices;
+  pairs_list.clear();
 
-    mutex_image_pairs_.lock();
-    // Check if there are pending jobs
-    if (permutation_available_) {
-      for (size_t i = 0; i < views_.size(); ++i) {
-        if (image_pairs_[i]) {
-          indices.push_back(i);
-        }
+  // Used to generate a combination of pairs (0-1, 0-2, 0-3, 1-2. 1-3...)
+  std::vector<bool> image_pairs(views_.size());
+  std::fill(image_pairs.begin(), image_pairs.end() - views_.size() + 2, true);
+  do {
+    std::vector<size_t> indices;
+    for (size_t i = 0; i < views_.size(); ++i) {
+      if (image_pairs[i]) {
+        indices.push_back(i);
       }
-      permutation_available_ = std::prev_permutation(image_pairs_.begin(), image_pairs_.end());
-      // Prepare the next permutation
-      LOG(INFO) << "Matching for pair indices : " << indices[0] << " " << indices[1];
     }
-    mutex_image_pairs_.unlock();
+    ImagesPair pair;
+    pair.first = indices[0];
+    pair.second = indices[1];
+    pairs_list.push_back(pair);
+  } while (std::prev_permutation(image_pairs.begin(), image_pairs.end()));
+}
+
+void Seed::MatchKeypoints(const ImagesPairsList &pairs_list)
+{
+#pragma omp parallel for
+  for (size_t index = 0; index < pairs_list.size(); ++index) {
+    const ImagesPair pair = pairs_list[index];
+    LOG(INFO) << "Matching for pair indices : " << pair.first << " " << pair.second;
 
     std::vector<cv::DMatch> matches;
     cv::FlannBasedMatcher matcher;
     matcher = cv::FlannBasedMatcher(new cv::flann::LshIndexParams(12, 20, 2));
-    matcher.match(descriptors_[indices[0]], descriptors_[indices[1]], matches);
+    matcher.match(descriptors_[pair.first], descriptors_[pair.second], matches);
 
 #ifdef DEBUG_PMVS_SEEDS
     cv::Mat grayscale_image_1;
     cv::Mat grayscale_image_2;
     cv::Mat output_image;
-    cv::cvtColor(views_[indices[0]].GetImage(), grayscale_image_1, cv::COLOR_BGR2GRAY);
-    cv::cvtColor(views_[indices[1]].GetImage(), grayscale_image_2, cv::COLOR_BGR2GRAY);
-    cv::drawMatches(grayscale_image_1, keypoints_[indices[0]],
-        grayscale_image_2, keypoints_[indices[1]],
+    cv::cvtColor(views_[pair.first].GetImage(), grayscale_image_1, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(views_[pair.second].GetImage(), grayscale_image_2, cv::COLOR_BGR2GRAY);
+    cv::drawMatches(grayscale_image_1, keypoints_[pair.first],
+        grayscale_image_2, keypoints_[pair.second],
         matches, output_image);
-    cv::imwrite(std::string("matches_") + std::to_string(indices[0]) + "_"
-        + std::to_string(indices[1]) + std::string("_f.jpg"), output_image);
+    cv::imwrite(std::string("matches_") + std::to_string(pair.first) + "_"
+        + std::to_string(pair.second) + std::string("_f.jpg"), output_image);
 #endif
 
-    // Save the result
-    mutex_.lock();
-    //descriptors_[job] = descriptors;
-    mutex_.unlock();
-
-    // Exit if there is not more jobs
-    if (!permutation_available_) {
-      break;
-    }
-  };
+//#pragma omp critical
+//      {
+//        //descriptors_[job] = descriptors;
+//      }
+  }
 }
 
 void Seed::GenerateSeeds(std::vector<Vector3> &seeds)
@@ -194,24 +202,18 @@ void Seed::GenerateSeeds(std::vector<Vector3> &seeds)
   descriptors_.resize(views_.size());
 
   // Detect keypoints
-  current_job_ = 0;
-  Threading::Run(thread_count_, &Seed::DetectKeypoints, this);
+  DetectKeypoints();
 
   // Get the best keypoints
-  current_job_ = 0;
-  Threading::Run(thread_count_, &Seed::FilterKeypoints, this);
+  FilterKeypoints();
 
   // Compute descriptors
-  current_job_ = 0;
-  Threading::Run(thread_count_, &Seed::ComputeDescriptors, this);
+  ComputeDescriptors();
 
-  // Compute matches
-  permutation_available_ = true;
-  image_pairs_.resize(views_.size());
-  std::fill(image_pairs_.begin(), image_pairs_.end() - views_.size() + 2, true);
-  //Threading::Run(thread_count_, &Seed::MatchKeypoints, this);
-  Threading::Run(thread_count_, &Seed::MatchKeypoints, this);
-
+  // Compute matches with a default pair list
+  ImagesPairsList pairs_list;
+  BuilPairsList(pairs_list);
+  MatchKeypoints(pairs_list);
 
   LOG(INFO) << "Done";
 }

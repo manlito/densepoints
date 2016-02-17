@@ -13,13 +13,19 @@ set(DENSIFITION_VERSION_MAJOR 0)
 set(DENSIFITION_VERSION_MINOR 1)
 set(DENSIFITION_VERSION_PATCH 0)
 
-# Dependency: OpenCV.
+# Dependency: OpenMP
+find_package(OpenMP QUIET)
+if(OPENMP_FOUND)
+    message(STATUS "OpenMP Flags: ${OpenMP_CXX_FLAGS}")
+endif()
+
+# Dependency: OpenCV
 # We use OpenCV as the backend for all image operations.
 find_package(OpenCV COMPONENTS features2d calib3d imgproc highgui core REQUIRED)
 message(STATUS "OpenCVIncludes: ${OpenCV_INCLUDE_DIRS}")
 message(STATUS "OpenCVLibs: ${OpenCV_LIBS}")
 
-# Dependency: PCL.
+# Dependency: PCL
 # For point set efficient search
 find_package(PCL COMPONENTS filter geometry common REQUIRED)
 message(STATUS "PCLIncludes: ${PCL_INCLUDE_DIRS}")
@@ -29,12 +35,17 @@ message(STATUS "PCLLibs: ${PCL_LIBRARIES}")
 find_package(Threads)
 message(STATUS "ThreadsLibs: ${CMAKE_THREAD_LIBS_INIT}")
 
-# Common libraries all projects need to be linked with
+# DensePoints: Definitions
 set(DENSEPOINTS_DEFINITIONS -std=c++11 -DELPP_THREAD_SAFE -DELPP_FORCE_USE_STD_THREAD)
-set(DENSEPOINTS_LIBS ${CMAKE_THREAD_LIBS_INIT} stlplus)
 if(DENSEPOINTS_DEBUG_PMVS_SEEDS)
     message(STATUS "DEBUG: PMVS::Seeds enabled")
     set(DENSEPOINTS_DEFINITIONS ${DENSEPOINTS_DEFINITIONS} -DDEBUG_PMVS_SEEDS)
+endif()
+# DensePoints: Libraries
+set(DENSEPOINTS_LIBS ${CMAKE_THREAD_LIBS_INIT} stlplus)
+if(OPENMP_FOUND)
+    set(DENSEPOINTS_DEFINITIONS ${DENSEPOINTS_DEFINITIONS} ${OpenMP_CXX_FLAGS})
+    set(DENSEPOINTS_LIBS ${DENSEPOINTS_LIBS} ${OpenMP_CXX_FLAGS})
 endif()
 
 # Default build type: Release
