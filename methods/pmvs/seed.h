@@ -2,9 +2,6 @@
 #define DENSEPOINTS_PMVS_FEATURES
 
 #include <vector>
-#include <thread>
-#include <mutex>
-#include <atomic>
 #include <opencv2/core.hpp>
 #include "patch.h"
 
@@ -26,20 +23,12 @@ namespace DensePoints {
 
       void GenerateSeeds(std::vector<Vector3> &seeds);
     protected:
-      // Thread facility: Shared
-      std::vector<std::thread> threads_;
-      std::atomic<size_t> current_job_;
-      std::mutex mutex_;
-
-      // Thread facility: Matching
-      bool permutation_available_;
-      std::mutex mutex_image_pairs_;
-      std::vector<bool> image_pairs_;
 
       void DetectKeypoints();
       void FilterKeypoints();
       void ComputeDescriptors();
-      void MatchKeypoints();
+      void BuilPairsList(ImagesPairsList &pairs_list);
+      void MatchKeypoints(const ImagesPairsList &pairs_list);
 
       std::vector<View> &views_;
       std::vector<std::vector<cv::KeyPoint>> keypoints_;
