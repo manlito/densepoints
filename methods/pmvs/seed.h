@@ -8,16 +8,19 @@
 namespace DensePoints {
   namespace PMVS {
     enum class DetectorType { AKAZE, ORB };
+    enum class MatcherType { FLANN, kNN };
     class Seed {
     public:
       Seed(std::vector<View> &views,
-           size_t thread_count = 6,
-           DetectorType detector_type = DetectorType::ORB,
+           DetectorType detector_type = DetectorType::AKAZE,
+           MatcherType matcher_type = MatcherType::kNN,
+           float max_epipolar_distance = 5,
            size_t cell_size = 32,
            size_t max_keypoints_per_cell = 2) :
         views_(views),
         detector_type_(detector_type),
-        thread_count_(thread_count),
+        matcher_type_(matcher_type),
+        max_epipolar_distance_(max_epipolar_distance),
         cell_size_(cell_size),
         max_keypoints_per_cell_(max_keypoints_per_cell) {}
 
@@ -27,16 +30,19 @@ namespace DensePoints {
       void DetectKeypoints();
       void FilterKeypoints();
       void ComputeDescriptors();
-      void BuilPairsList(ImagesPairsList &pairs_list);
-      void MatchKeypoints(const ImagesPairsList &pairs_list);
+      void DefaultPairsList();
+      void MatchKeypoints();
+      void FilterMatches();
 
       std::vector<View> &views_;
       std::vector<std::vector<cv::KeyPoint>> keypoints_;
       std::vector<cv::Mat> descriptors_;
-      std::vector<cv::DMatch> matches_;
+      ImagesPairsList pairs_list_;
+      std::vector<std::vector<cv::DMatch>> matches_;
 
       DetectorType detector_type_;
-      size_t thread_count_;
+      MatcherType matcher_type_;
+      float max_epipolar_distance_;
       size_t cell_size_;
       size_t max_keypoints_per_cell_;
     };

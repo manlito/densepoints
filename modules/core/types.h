@@ -11,11 +11,15 @@
 namespace DensePoints {
 
   // Used for math operations
-  typedef Eigen::Matrix<double, 3, 4> Mat34;
-  typedef Mat34 ProjectionMatrix;
+  typedef Eigen::Matrix<float, 3, 4> Matrix34;
+  typedef Eigen::Matrix<float, 4, 3> Matrix43;
+  typedef Eigen::Matrix4f Matrix4;
+  typedef Eigen::Matrix3f Matrix3;
+  typedef Eigen::Matrix3f FundamentalMatrix;
+  typedef Matrix34 ProjectionMatrix;
   typedef Eigen::Vector2f Vector2;
   typedef Eigen::Vector3f Vector3;
-  typedef Eigen::Vector4f VectorHomogeneous;
+  typedef Eigen::Vector4f Vector4;
 
   // Used for representation
   typedef pcl::PointXYZ PointXYZ;
@@ -26,6 +30,7 @@ namespace DensePoints {
   // Matching
   typedef std::pair<size_t, size_t> ImagesPair;
   typedef std::vector<ImagesPair> ImagesPairsList;
+
 
   class View {
   public:

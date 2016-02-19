@@ -10,7 +10,7 @@ target_link_libraries(${PROJECT_NAME} ${PCL_COMMON_LIBRARIES})
 add_definitions(${PCL_DEFINITIONS})
 
 # DensePoints::PMVS
-target_link_libraries(${PROJECT_NAME} pmvs densepoints_io)
+target_link_libraries(${PROJECT_NAME} pmvs)
 
 # Densepoints common definitions and libraries
 target_link_libraries(${PROJECT_NAME} ${DENSEPOINTS_LIBS})

@@ -5,15 +5,16 @@
 #include "easylogging/easylogging.h"
 #include "seed.h"
 #include "core/grid.h"
+#include "geometry/fundamental_matrix.h"
 #include <omp.h>
 
 using namespace DensePoints::PMVS;
 
 void Seed::DetectKeypoints()
 {
+  keypoints_.resize(views_.size());
 #pragma omp parallel for
   for (size_t view_index = 0; view_index < views_.size(); ++view_index) {
-    LOG(INFO) << "Detecting keypoints for image " << view_index;
 
     cv::Mat image;
     views_[view_index].GetImage().copyTo(image);
@@ -30,6 +31,8 @@ void Seed::DetectKeypoints()
           fast->detect(image, keypoints);
         }
     }
+
+    LOG(INFO) << "Found " << keypoints.size() << " keypoints for image " << view_index;
 
 #ifdef DEBUG_PMVS_SEEDS
     cv::Mat grayscale_image;
@@ -51,13 +54,12 @@ void Seed::FilterKeypoints()
 {
 #pragma omp parallel for
   for (size_t view_index = 0; view_index < views_.size(); ++view_index) {
-    LOG(INFO) << "Selecting best keypoints for image index " << view_index;
+    const size_t initial_keypoints = keypoints_[view_index].size();
 
     Grid grid(cell_size_, views_[view_index].GetImage().cols, views_[view_index].GetImage().rows);
 
     // Put each keypoint in its cell. We will keep only keypoint indexes
     std::vector<std::vector<size_t>> keypoints_grid(grid.Size());
-    LOG(INFO) << "Grid size for image index " << keypoints_grid.size();
 
     // Map each keypoint to the cell in the grid
     size_t index = 0;
@@ -96,6 +98,8 @@ void Seed::FilterKeypoints()
       keypoints.push_back(keypoints_[view_index][keypoint_index]);
     }
 
+    LOG(INFO) << "Reduced from "<< initial_keypoints << " to " << keypoints.size() << " keypoints for image index " << keypoints_grid.size();
+
 #ifdef DEBUG_PMVS_SEEDS
     cv::Mat grayscale_image;
     cv::cvtColor(views_[view_index].GetImage(), grayscale_image, cv::COLOR_BGR2GRAY);
@@ -114,6 +118,7 @@ void Seed::FilterKeypoints()
 
 void Seed::ComputeDescriptors()
 {
+  descriptors_.resize(views_.size());
 #pragma omp parallel for
   for (size_t view_index = 0; view_index < views_.size(); ++view_index) {
     LOG(INFO) << "Computing descriptors for image index " << view_index;
@@ -141,9 +146,9 @@ void Seed::ComputeDescriptors()
   }
 }
 
-void Seed::BuilPairsList(ImagesPairsList &pairs_list)
+void Seed::DefaultPairsList()
 {
-  pairs_list.clear();
+  pairs_list_.clear();
 
   // Used to generate a combination of pairs (0-1, 0-2, 0-3, 1-2. 1-3...)
   std::vector<bool> image_pairs(views_.size());
@@ -158,21 +163,102 @@ void Seed::BuilPairsList(ImagesPairsList &pairs_list)
     ImagesPair pair;
     pair.first = indices[0];
     pair.second = indices[1];
-    pairs_list.push_back(pair);
+    pairs_list_.push_back(pair);
   } while (std::prev_permutation(image_pairs.begin(), image_pairs.end()));
 }
 
-void Seed::MatchKeypoints(const ImagesPairsList &pairs_list)
+void Seed::MatchKeypoints()
 {
+  matches_.resize(pairs_list_.size());
 #pragma omp parallel for
-  for (size_t index = 0; index < pairs_list.size(); ++index) {
-    const ImagesPair pair = pairs_list[index];
-    LOG(INFO) << "Matching for pair indices : " << pair.first << " " << pair.second;
+  for (size_t match_index = 0; match_index < pairs_list_.size(); ++match_index) {
+    const ImagesPair pair = pairs_list_[match_index];
 
     std::vector<cv::DMatch> matches;
-    cv::FlannBasedMatcher matcher;
-    matcher = cv::FlannBasedMatcher(new cv::flann::LshIndexParams(12, 20, 2));
-    matcher.match(descriptors_[pair.first], descriptors_[pair.second], matches);
+    switch (matcher_type_) {
+      case MatcherType::kNN: {
+          cv::Ptr<cv::DescriptorMatcher> matcher = cv::DescriptorMatcher::create("BruteForce-Hamming");
+          const float nn_match_ratio = 0.8;
+          std::vector<std::vector<cv::DMatch>> matches_groups;
+          matcher->knnMatch(descriptors_[pair.first], descriptors_[pair.second], matches_groups, 2);
+          for (size_t i = 0; i < matches_groups.size(); i++) {
+              if (matches_groups[i][0].distance < nn_match_ratio * matches_groups[i][1].distance) {
+                matches.push_back(matches_groups[i][0]);
+              }
+          }
+          break;
+        }
+      case MatcherType::FLANN: {
+          cv::FlannBasedMatcher matcher;
+          matcher = cv::FlannBasedMatcher(new cv::flann::LshIndexParams(12, 20, 2));
+          matcher.match(descriptors_[pair.first], descriptors_[pair.second], matches);
+
+          std::vector<cv::DMatch> good_matches;
+          for (size_t i = 0; i < matches.size(); i++) {
+            if (matches[i].distance < 70) {
+              good_matches.push_back(matches[i]);
+            }
+          }
+          break;
+        }
+      default: LOG(FATAL) << "Unknown matcher type";
+    }
+
+    LOG(INFO) << "Found " << matches.size() << " matches for pair indices : " << pair.first << " " << pair.second;
+
+#ifdef DEBUG_PMVS_SEEDS
+    cv::Mat grayscale_image_1;
+    cv::Mat grayscale_image_2;
+    cv::Mat output_image;
+    cv::cvtColor(views_[pair.first].GetImage(), grayscale_image_1, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(views_[pair.second].GetImage(), grayscale_image_2, cv::COLOR_BGR2GRAY);
+    cv::drawMatches(grayscale_image_1, keypoints_[pair.first],
+        grayscale_image_2, keypoints_[pair.second],
+        matches, output_image);
+    cv::imwrite(std::string("matches_") + std::to_string(pair.first) + "_"
+        + std::to_string(pair.second) + std::string(".jpg"), output_image);
+#endif
+
+#pragma omp critical
+    {
+      matches_[match_index] = matches;
+    }
+  }
+}
+
+void Seed::FilterMatches()
+{
+#pragma omp parallel for
+  for (size_t match_index = 0; match_index < pairs_list_.size(); ++match_index) {
+    const ImagesPair &pair = pairs_list_[match_index];
+    FundamentalMatrix fundamental_matrix = Geometry::ComputeFundamentalMatrix(
+        views_[pair.first].projection_matrix,
+        views_[pair.second].projection_matrix);
+    float distanceSum = 0;
+
+    // Matches vector indexes are in sync with pairs_list
+    std::vector<cv::DMatch> matches = matches_[match_index];
+    const size_t initial_matches = matches.size();
+    std::vector<cv::DMatch>::iterator it = matches.begin();
+    while (it != matches.end()) {
+      const cv::DMatch &match = *it;
+      const cv::KeyPoint &keypoint_left = keypoints_[pair.first][match.queryIdx];
+      const cv::KeyPoint &keypoint_right = keypoints_[pair.second][match.trainIdx];
+
+      Vector2 p1(keypoint_left.pt.x, keypoint_left.pt.y);
+      Vector2 p2(keypoint_right.pt.x, keypoint_right.pt.y);
+      Geometry::Line2D line = Geometry::LineFromFundamentalMatrix(fundamental_matrix, p1);
+      float distance = line.distance(p2);
+
+      if (distance > 5) {
+        it = matches.erase(it);
+      } else {
+        distanceSum += distance;
+        ++it;
+      }
+    }
+
+    LOG(INFO) << "Reduced from " << initial_matches << " to " << matches.size() << " matches for pair indices : " << pair.first << " " << pair.second;
 
 #ifdef DEBUG_PMVS_SEEDS
     cv::Mat grayscale_image_1;
@@ -187,20 +273,15 @@ void Seed::MatchKeypoints(const ImagesPairsList &pairs_list)
         + std::to_string(pair.second) + std::string("_f.jpg"), output_image);
 #endif
 
-//#pragma omp critical
-//      {
-//        //descriptors_[job] = descriptors;
-//      }
+#pragma omp critical
+    {
+      matches_[match_index] = matches;
+    }
   }
 }
 
 void Seed::GenerateSeeds(std::vector<Vector3> &seeds)
 {
-
-  // Reserve space where to put keypoints and descriptors
-  keypoints_.resize(views_.size());
-  descriptors_.resize(views_.size());
-
   // Detect keypoints
   DetectKeypoints();
 
@@ -211,9 +292,11 @@ void Seed::GenerateSeeds(std::vector<Vector3> &seeds)
   ComputeDescriptors();
 
   // Compute matches with a default pair list
-  ImagesPairsList pairs_list;
-  BuilPairsList(pairs_list);
-  MatchKeypoints(pairs_list);
+  DefaultPairsList();
+  MatchKeypoints();
+
+  // Filter using distance to epipolar line
+  FilterMatches();
 
   LOG(INFO) << "Done";
 }
