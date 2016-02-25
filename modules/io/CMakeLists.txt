@@ -8,5 +8,5 @@ add_library(${PROJECT_NAME} ${DENSEPOINTS_IO_SOURCES})
 target_link_libraries(${PROJECT_NAME} densepoints_core)
 
 # Densepoints common definitions and libraries
-target_link_libraries(${PROJECT_NAME} ${DENSEPOINTS_LIBS})
+target_link_libraries(${PROJECT_NAME} ${DENSEPOINTS_THIRD_PARTY_LIBS})
 add_definitions(${DENSEPOINTS_DEFINITIONS})

@@ -15,8 +15,8 @@ namespace DensePoints {
            DetectorType detector_type = DetectorType::AKAZE,
            MatcherType matcher_type = MatcherType::kNN,
            float max_epipolar_distance = 5,
-           size_t cell_size = 32,
-           size_t max_keypoints_per_cell = 2) :
+           size_t cell_size = 16,
+           size_t max_keypoints_per_cell = 4) :
         views_(views),
         detector_type_(detector_type),
         matcher_type_(matcher_type),

@@ -13,5 +13,5 @@ target_link_libraries(${PROJECT_NAME} ${PCL_COMMON_LIBRARIES})
 add_definitions(${PCL_DEFINITIONS})
 
 # Densepoints common definitions and libraries
-target_link_libraries(${PROJECT_NAME} ${DENSEPOINTS_LIBS})
+target_link_libraries(${PROJECT_NAME} ${DENSEPOINTS_LIBS} ${DENSEPOINTS_THIRD_PARTY_LIBS})
 add_definitions(${DENSEPOINTS_DEFINITIONS})

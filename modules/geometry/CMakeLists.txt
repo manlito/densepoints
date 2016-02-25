@@ -8,5 +8,5 @@ find_package(Eigen REQUIRED)
 include_directories(EIGEN_INCLUDE_DIRS)
 
 # Densepoints common definitions and libraries
-target_link_libraries(${PROJECT_NAME} ${DENSEPOINTS_LIBS})
+target_link_libraries(${PROJECT_NAME} ${DENSEPOINTS_THIRD_PARTYLIBS})
 add_definitions(${DENSEPOINTS_DEFINITIONS})

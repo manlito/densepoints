@@ -98,14 +98,14 @@ void Seed::FilterKeypoints()
       keypoints.push_back(keypoints_[view_index][keypoint_index]);
     }
 
-    LOG(INFO) << "Reduced from "<< initial_keypoints << " to " << keypoints.size() << " keypoints for image index " << keypoints_grid.size();
+    LOG(INFO) << "Reduced from "<< initial_keypoints << " to " << keypoints.size() << " keypoints for image index " << view_index;
 
 #ifdef DEBUG_PMVS_SEEDS
     cv::Mat grayscale_image;
     cv::cvtColor(views_[view_index].GetImage(), grayscale_image, cv::COLOR_BGR2GRAY);
     cv::drawKeypoints(grayscale_image, keypoints, grayscale_image);
     cv::imwrite(std::string("kp_") + std::to_string(view_index) + std::string("_f.jpg"), grayscale_image);
-    LOG(INFO) << "Best keypoints: " << best_keypoints.size();
+    LOG(INFO) << "Best " << best_keypoints.size() << " keypoints for image index " << view_index;
 #endif
 
 #pragma omp critical
@@ -178,7 +178,7 @@ void Seed::MatchKeypoints()
     switch (matcher_type_) {
       case MatcherType::kNN: {
           cv::Ptr<cv::DescriptorMatcher> matcher = cv::DescriptorMatcher::create("BruteForce-Hamming");
-          const float nn_match_ratio = 0.8;
+          const float nn_match_ratio = 0.7;
           std::vector<std::vector<cv::DMatch>> matches_groups;
           matcher->knnMatch(descriptors_[pair.first], descriptors_[pair.second], matches_groups, 2);
           for (size_t i = 0; i < matches_groups.size(); i++) {
