@@ -7,6 +7,10 @@ add_definitions(
   -DDENSEPOINTS_TESTS_OUTPUT_PATH="${DENSEPOINTS_TESTS_OUTPUT_PATH}"
 )
 
+# Add a helper to build data for tests
+include_directories(.)
+add_library(test_data_generator test_data_generator.cpp)
+
 # Rule: Each file will contain a single test
 file(GLOB_RECURSE DENSEPOINTS_TEST_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.cpp)
 
@@ -16,12 +20,12 @@ foreach(TEST_SOURCE_FILE ${DENSEPOINTS_TEST_SOURCES})
   get_filename_component(TEST_SOURCE_FILENAME ${TEST_SOURCE_FILE} NAME)
   # Convert relative path to prefix
   get_filename_component(TEST_SOURCE_DIRECTORY ${TEST_SOURCE_FILE} DIRECTORY)
-  string(REPLACE "[/\\]" "_" TEST_PREFIX ${TEST_SOURCE_DIRECTORY})
+  string(REPLACE "[/\\]" "_" TEST_PREFIX "${TEST_SOURCE_DIRECTORY}")
   # Remove the extension
   string(REPLACE ".cpp" "" TEST_NAME ${TEST_SOURCE_FILENAME})
   set(TEST_NAME "${TEST_PREFIX}_${TEST_NAME}")
   add_executable(${TEST_NAME} ${TEST_SOURCE_FILE})
-  target_link_libraries(${TEST_NAME} ${DENSEPOINTS_LIBS} ${DENSEPOINTS_THIRD_PARTY_LIBS} ${GTEST_BOTH_LIBRARIES})
+  target_link_libraries(${TEST_NAME} test_data_generator ${DENSEPOINTS_LIBS} ${DENSEPOINTS_THIRD_PARTY_LIBS} ${GTEST_BOTH_LIBRARIES})
   # Add to GTest
   GTEST_ADD_TESTS(${TEST_NAME} "${TEST_ARGS}" AUTO)
 endforeach()
