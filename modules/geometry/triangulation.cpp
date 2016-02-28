@@ -8,8 +8,8 @@ Vector3 Geometry::DirectLinearTriangulation(const ProjectionMatrix &projection_m
                                             const ProjectionMatrix &projection_matrix_2,
                                             const Vector2 &observation_2)
 {
-  return DirectLinearTriangulation(std::vector<ProjectionMatrix> {projection_matrix_1, projection_matrix_2},
-                                   std::vector<Vector2> {observation_1, observation_2});
+  return Geometry::DirectLinearTriangulation(std::vector<ProjectionMatrix> {projection_matrix_1, projection_matrix_2},
+                                             std::vector<Vector2> {observation_1, observation_2});
 }
 
 Vector3 Geometry::DirectLinearTriangulation(const std::vector<ProjectionMatrix> &projection_matrices,
