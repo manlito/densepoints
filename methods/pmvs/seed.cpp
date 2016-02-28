@@ -6,9 +6,34 @@
 #include "seed.h"
 #include "core/grid.h"
 #include "geometry/fundamental_matrix.h"
-#include <omp.h>
+#include "geometry/triangulation.h"
+#include "rplycpp/src/rplycpp.hpp"
 
 using namespace DensePoints::PMVS;
+
+void Seed::GenerateSeeds(std::vector<Vector3> &seeds)
+{
+  // Detect keypoints
+  DetectKeypoints();
+
+  // Get the best keypoints
+  FilterKeypoints();
+
+  // Compute descriptors
+  ComputeDescriptors();
+
+  // Compute matches with a default pair list
+  DefaultPairsList();
+  MatchKeypoints();
+
+  // Filter using distance to epipolar line
+  FilterMatches();
+
+  // Triangulate
+  TriangulateMatches();
+
+  LOG(INFO) << "Done";
+}
 
 void Seed::DetectKeypoints()
 {
@@ -280,23 +305,104 @@ void Seed::FilterMatches()
   }
 }
 
-void Seed::GenerateSeeds(std::vector<Vector3> &seeds)
+void Seed::GetAllMatches(KeypointImagePair &keypoint_index,
+                         std::vector<KeypointImagePair> &keypoints_indices)
 {
-  // Detect keypoints
-  DetectKeypoints();
+  for (size_t match_index = 0; match_index < pairs_list_.size(); ++match_index) {
+    const ImagesPair &pair = pairs_list_[match_index];
+    // Check if the pair contains the image index, as with the query keypoint
+    bool compare_query_idx;
+    if (pair.first == keypoint_index.first) {
+      compare_query_idx = true;
+    } else if (pair.second == keypoint_index.first) {
+      compare_query_idx = false;
+    } else {
+      continue;
+    }
+    // Look for a match in the image index, with the query keypoint
+    // We need to find in vector<DMatch>, for queryIdx or trainIdx
+    // that matches our input keypoint
+    KeypointImagePair candidate_keypoint_index;
+    bool match_found = false;
+    const std::vector<cv::DMatch> &matches = matches_[match_index];
+    for (const cv::DMatch &match : matches) {
+      if (compare_query_idx && match.queryIdx == keypoint_index.second) {
+        // When is to left of DMatch, we want the data on the train
+        candidate_keypoint_index.first = pair.second;
+        candidate_keypoint_index.second = match.trainIdx;
+        match_found = true;
+        break;
+      } else if (!compare_query_idx && match.trainIdx == keypoint_index.second) {
+        // When is to right of DMatch, we want the data on the query
+        candidate_keypoint_index.first = pair.first;
+        candidate_keypoint_index.second = match.queryIdx;
+        match_found = true;
+        break;
+      }
+    }
+    if (match_found) {
+      keypoints_indices.push_back(candidate_keypoint_index);
+    }
+  }
+}
 
-  // Get the best keypoints
-  FilterKeypoints();
+void Seed::TriangulateMatches()
+{
+  for (size_t view_index = 0; view_index < views_.size(); ++view_index) {
+    const std::vector<cv::KeyPoint> &keypoints = keypoints_[view_index];
+#pragma omp parallel for
+    for (size_t keypoint_index = 0; keypoint_index < keypoints.size(); ++keypoint_index) {
+      KeypointImagePair keypoint_image_pair;
+      keypoint_image_pair.first = view_index;
+      keypoint_image_pair.second = keypoint_index;
+      std::vector<KeypointImagePair> keypoint_image_pairs;
+      // Find all matches that include this keypoint
+      GetAllMatches(keypoint_image_pair, keypoint_image_pairs);
 
-  // Compute descriptors
-  ComputeDescriptors();
+      // Make sure at least 1 match is found
+      if (keypoint_image_pairs.size() >= 1) {
+        std::vector<ProjectionMatrix> projection_matrices;
+        std::vector<Vector2> observations;
+        projection_matrices.push_back(views_[view_index].projection_matrix);
+        cv::Point point = keypoints_[view_index][keypoint_index].pt;
+        observations.push_back(Vector2(point.x, point.y));
+        // Add the current view
+        for (KeypointImagePair matched_keypoint_image_pair : keypoint_image_pairs) {
+          const size_t matched_view_index = matched_keypoint_image_pair.first;
+          projection_matrices.push_back(views_[matched_view_index].projection_matrix);
+          point = keypoints_[matched_view_index][matched_keypoint_image_pair.second].pt;
+          observations.push_back(Vector2(point.x, point.y));
+        }
+        // Triangulate
+        Vector3 X = Geometry::DirectLinearTriangulation(projection_matrices, observations);
+#pragma omp critical
+        {
+          points_.push_back(X);
+        }
+      }
+    }
+  }
 
-  // Compute matches with a default pair list
-  DefaultPairsList();
-  MatchKeypoints();
+#ifdef DEBUG_PMVS_SEEDS
+  // Debug triangulation
+  rplycpp::PLYWriter writer;
+  writer.Open("triangulation.ply");
+  std::vector<rplycpp::PLYProperty> properties;
+  rplycpp::PLYProperty property;
+  property.type = rplycpp::PLYDataType::PLY_FLOAT;
+  property.name = "x";
+  properties.push_back(property);
+  property.name = "y";
+  properties.push_back(property);
+  property.name = "z";
+  properties.push_back(property);
+  writer.AddElement("vertex", properties, points_.size());
 
-  // Filter using distance to epipolar line
-  FilterMatches();
+  // Add the data IN THE SAME ORDER!
+  for (const Vector3 &point : points_) {
+    writer.AddRow(std::vector<double> {point[0], point[1], point[2]});
+  }
+  writer.Close();
+#endif
 
-  LOG(INFO) << "Done";
 }

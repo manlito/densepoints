@@ -7,6 +7,7 @@
 
 namespace DensePoints {
   namespace PMVS {
+    typedef std::pair<size_t, size_t> KeypointImagePair;
     enum class DetectorType { AKAZE, ORB };
     enum class MatcherType { FLANN, kNN };
     class Seed {
@@ -33,12 +34,16 @@ namespace DensePoints {
       void DefaultPairsList();
       void MatchKeypoints();
       void FilterMatches();
+      void GetAllMatches(KeypointImagePair &keypoint_index,
+                         std::vector<KeypointImagePair> &keypoints_indices);
+      void TriangulateMatches();
 
       std::vector<View> &views_;
       std::vector<std::vector<cv::KeyPoint>> keypoints_;
       std::vector<cv::Mat> descriptors_;
       ImagesPairsList pairs_list_;
       std::vector<std::vector<cv::DMatch>> matches_;
+      std::vector<Vector3> points_;
 
       DetectorType detector_type_;
       MatcherType matcher_type_;
