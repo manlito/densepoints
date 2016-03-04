@@ -52,9 +52,9 @@ Geometry::Line2D Geometry::LineFromFundamentalMatrix(FundamentalMatrix &fundamen
   return line;
 }
 
-float Geometry::YCoordinateAt(Line2D &line, float x_coordinate)
+double Geometry::YCoordinateAt(Line2D &line, double x_coordinate)
 {
-  Eigen::Hyperplane<float, 2> hp(Vector2(1, 0), -x_coordinate);
+  Eigen::Hyperplane<double, 2> hp(Vector2(1, 0), -x_coordinate);
   Vector2 intersection = line.intersectionPoint(hp);
   return intersection[1];
 }

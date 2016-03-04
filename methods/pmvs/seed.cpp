@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
+#include <opencv2/opencv_modules.hpp>
 #include <opencv2/features2d.hpp>
 #include "easylogging/easylogging.h"
 #include "seed.h"
@@ -19,15 +20,20 @@ void Seed::GenerateSeeds(std::vector<Vector3> &seeds)
   // Get the best keypoints
   FilterKeypoints();
 
-  // Compute descriptors
-  ComputeDescriptors();
-
   // Compute matches with a default pair list
   DefaultPairsList();
-  MatchKeypoints();
 
-  // Filter using distance to epipolar line
-  FilterMatches();
+  if (!epipolar_matching_) {
+    // Compute descriptors
+    ComputeDescriptors();
+    // Match with Flann or Bruteforce
+    MatchKeypoints();
+    // Filter using distance to epipolar line
+    FilterMatches();
+  } else {
+    // Accept matches using only distance to epipolar line
+    DirectEpipolarMatching();
+  }
 
   // Triangulate
   TriangulateMatches();
@@ -220,13 +226,65 @@ void Seed::MatchKeypoints()
 
           std::vector<cv::DMatch> good_matches;
           for (size_t i = 0; i < matches.size(); i++) {
-            if (matches[i].distance < 70) {
+            if (matches[i].distance < 30) {
               good_matches.push_back(matches[i]);
             }
           }
+          matches = good_matches;
           break;
         }
       default: LOG(FATAL) << "Unknown matcher type";
+    }
+
+    LOG(INFO) << "Found " << matches.size() << " matches for pair indices : " << pair.first << " " << pair.second;
+
+#ifdef DEBUG_PMVS_SEEDS
+    cv::Mat grayscale_image_1;
+    cv::Mat grayscale_image_2;
+    cv::Mat output_image;
+    cv::cvtColor(views_[pair.first].GetImage(), grayscale_image_1, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(views_[pair.second].GetImage(), grayscale_image_2, cv::COLOR_BGR2GRAY);
+    cv::drawMatches(grayscale_image_1, keypoints_[pair.first],
+        grayscale_image_2, keypoints_[pair.second],
+        matches, output_image);
+    cv::imwrite(std::string("matches_") + std::to_string(pair.first) + "_"
+        + std::to_string(pair.second) + std::string(".jpg"), output_image);
+#endif
+
+#pragma omp critical
+    {
+      matches_[match_index] = matches;
+    }
+  }
+}
+
+void Seed::DirectEpipolarMatching()
+{
+  matches_.resize(pairs_list_.size());
+#pragma omp parallel for
+  for (size_t match_index = 0; match_index < pairs_list_.size(); ++match_index) {
+    const ImagesPair pair = pairs_list_[match_index];
+    FundamentalMatrix fundamental_matrix = Geometry::ComputeFundamentalMatrix(
+        views_[pair.first].GetProjectionMatrix(),
+        views_[pair.second].GetProjectionMatrix());
+
+    std::vector<cv::DMatch> matches;
+    // For each keypoint in the left image
+    size_t queryIdx = 0;
+    for (const cv::KeyPoint &keypoint_left : keypoints_[pair.first]) {
+      const Vector2 point_left(keypoint_left.pt.x, keypoint_left.pt.y);
+      // Look in the right points that lie in the epipolar line
+      size_t trainIdx = 0;
+      for (const cv::KeyPoint &keypoint_right : keypoints_[pair.second]) {
+        const Vector2 point_right(keypoint_right.pt.x, keypoint_right.pt.y);
+        Geometry::Line2D line = Geometry::LineFromFundamentalMatrix(fundamental_matrix, point_left);
+        float distance = line.distance(point_right);
+        if (distance <= max_epipolar_distance_) {
+          matches.push_back(cv::DMatch(queryIdx, trainIdx, distance));
+        }
+        ++trainIdx;
+      }
+      ++queryIdx;
     }
 
     LOG(INFO) << "Found " << matches.size() << " matches for pair indices : " << pair.first << " " << pair.second;
@@ -257,8 +315,8 @@ void Seed::FilterMatches()
   for (size_t match_index = 0; match_index < pairs_list_.size(); ++match_index) {
     const ImagesPair &pair = pairs_list_[match_index];
     FundamentalMatrix fundamental_matrix = Geometry::ComputeFundamentalMatrix(
-        views_[pair.first].projection_matrix,
-        views_[pair.second].projection_matrix);
+        views_[pair.first].GetProjectionMatrix(),
+        views_[pair.second].GetProjectionMatrix());
     float distanceSum = 0;
 
     // Matches vector indexes are in sync with pairs_list
@@ -275,7 +333,7 @@ void Seed::FilterMatches()
       Geometry::Line2D line = Geometry::LineFromFundamentalMatrix(fundamental_matrix, p1);
       float distance = line.distance(p2);
 
-      if (distance > 5) {
+      if (distance > max_epipolar_distance_) {
         it = matches.erase(it);
       } else {
         distanceSum += distance;
@@ -363,13 +421,13 @@ void Seed::TriangulateMatches()
       if (keypoint_image_pairs.size() >= 1) {
         std::vector<ProjectionMatrix> projection_matrices;
         std::vector<Vector2> observations;
-        projection_matrices.push_back(views_[view_index].projection_matrix);
+        projection_matrices.push_back(views_[view_index].GetProjectionMatrix());
         cv::Point point = keypoints_[view_index][keypoint_index].pt;
         observations.push_back(Vector2(point.x, point.y));
         // Add the current view
         for (KeypointImagePair matched_keypoint_image_pair : keypoint_image_pairs) {
           const size_t matched_view_index = matched_keypoint_image_pair.first;
-          projection_matrices.push_back(views_[matched_view_index].projection_matrix);
+          projection_matrices.push_back(views_[matched_view_index].GetProjectionMatrix());
           point = keypoints_[matched_view_index][matched_keypoint_image_pair.second].pt;
           observations.push_back(Vector2(point.x, point.y));
         }
@@ -383,7 +441,7 @@ void Seed::TriangulateMatches()
     }
   }
 
-#ifdef DEBUG_PMVS_SEEDS
+//#ifdef DEBUG_PMVS_SEEDS
   // Debug triangulation
   rplycpp::PLYWriter writer;
   writer.Open("triangulation.ply");
@@ -403,6 +461,6 @@ void Seed::TriangulateMatches()
     writer.AddRow(std::vector<double> {point[0], point[1], point[2]});
   }
   writer.Close();
-#endif
+//#endif
 
 }

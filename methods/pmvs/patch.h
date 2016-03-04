@@ -12,6 +12,7 @@ namespace DensePoints {
     class Patch {
     public:
       bool IsAcceptable();
+      float NCCScore(Patch &comparison_patch);
       const PointCloudXYZRGBNormal GetPoint();
     private:
       // PointXYZ and Normal data is stored in PointXYZRGBNormal

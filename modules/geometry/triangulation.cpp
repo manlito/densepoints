@@ -16,7 +16,7 @@ Vector3 Geometry::DirectLinearTriangulation(const std::vector<ProjectionMatrix> 
                                             const std::vector<Vector2> &observations)
 {
   // H.Z. Page 312, extended to multiple views
-  Eigen::MatrixX4f A(projection_matrices.size() * 2, 4);
+  Eigen::MatrixX4d A(projection_matrices.size() * 2, 4);
   for (size_t i = 0; i < projection_matrices.size(); ++i) {
     const ProjectionMatrix &P = projection_matrices[i];
     const float x = observations[i][0];
@@ -26,7 +26,7 @@ Vector3 Geometry::DirectLinearTriangulation(const std::vector<ProjectionMatrix> 
   }
 
   // Nullspace of A
-  Eigen::JacobiSVD<Eigen::MatrixX4f> svd(A, Eigen::ComputeFullV);
+  Eigen::JacobiSVD<Eigen::MatrixX4d> svd(A, Eigen::ComputeFullV);
   Vector4 X = svd.matrixV().col(3);
 
   // Return inhomogeneous

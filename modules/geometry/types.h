@@ -9,7 +9,7 @@
 
 namespace DensePoints {
   namespace Geometry {
-    typedef Eigen::ParametrizedLine<float, 2> Line2D;
+    typedef Eigen::ParametrizedLine<double, 2> Line2D;
   }
 }
 

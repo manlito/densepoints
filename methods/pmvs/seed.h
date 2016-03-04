@@ -13,14 +13,16 @@ namespace DensePoints {
     class Seed {
     public:
       Seed(std::vector<View> &views,
-           DetectorType detector_type = DetectorType::AKAZE,
+           DetectorType detector_type = DetectorType::ORB,
            MatcherType matcher_type = MatcherType::kNN,
-           float max_epipolar_distance = 5,
-           size_t cell_size = 16,
+           bool epipolar_matching = true,
+           float max_epipolar_distance = 0.5,
+           size_t cell_size = 32,
            size_t max_keypoints_per_cell = 4) :
         views_(views),
         detector_type_(detector_type),
         matcher_type_(matcher_type),
+        epipolar_matching_(epipolar_matching),
         max_epipolar_distance_(max_epipolar_distance),
         cell_size_(cell_size),
         max_keypoints_per_cell_(max_keypoints_per_cell) {}
@@ -32,11 +34,19 @@ namespace DensePoints {
       void FilterKeypoints();
       void ComputeDescriptors();
       void DefaultPairsList();
+
+      // Standard feature matching
       void MatchKeypoints();
       void FilterMatches();
+
+      // Matching using only distance to epipolar line
+      void DirectEpipolarMatching();
       void GetAllMatches(KeypointImagePair &keypoint_index,
                          std::vector<KeypointImagePair> &keypoints_indices);
+
       void TriangulateMatches();
+
+      bool AddSeed(Vector3 X);
 
       std::vector<View> &views_;
       std::vector<std::vector<cv::KeyPoint>> keypoints_;
@@ -48,6 +58,7 @@ namespace DensePoints {
       DetectorType detector_type_;
       MatcherType matcher_type_;
       float max_epipolar_distance_;
+      bool epipolar_matching_;
       size_t cell_size_;
       size_t max_keypoints_per_cell_;
     };

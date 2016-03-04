@@ -6,20 +6,25 @@ ProjectionMatrix TestScene::CreateRandomView(bool randomizeX,
                                              bool randomizeZ)
 {
   Matrix3 cameraIntrinsics = Matrix3::Identity();
+  // Typical camera
+  cameraIntrinsics(0, 0) = 1000;
+  cameraIntrinsics(0, 2) = 2000;
+  cameraIntrinsics(1, 1) = 1000;
+  cameraIntrinsics(1, 2) = 1500;
   ProjectionMatrix cameraExtrinsics = ProjectionMatrix::Identity();
 
   Matrix3 rotationMatrix = Matrix3::Identity();
   Vector3 translation;
   if (randomizeX) {
-    rotationMatrix = rotationMatrix * Eigen::AngleAxis<float>(distribution_angle_(random_generator_), Vector3::UnitX());
+    rotationMatrix = rotationMatrix * Eigen::AngleAxis<double>(distribution_angle_(random_generator_), Vector3::UnitX());
     translation[0] = distribution_translation_(random_generator_) + camera_offset_[0];
   }
   if (randomizeY) {
-    rotationMatrix = rotationMatrix * Eigen::AngleAxis<float>(distribution_angle_(random_generator_), Vector3::UnitY());
+    rotationMatrix = rotationMatrix * Eigen::AngleAxis<double>(distribution_angle_(random_generator_), Vector3::UnitY());
     translation[1] = distribution_translation_(random_generator_) + camera_offset_[1];
   }
   if (randomizeZ) {
-    rotationMatrix = rotationMatrix * Eigen::AngleAxis<float>(distribution_angle_(random_generator_), Vector3::UnitZ());
+    rotationMatrix = rotationMatrix * Eigen::AngleAxis<double>(distribution_angle_(random_generator_), Vector3::UnitZ());
     translation[2] = distribution_translation_(random_generator_) + camera_offset_[2];
   }
 

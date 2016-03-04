@@ -22,7 +22,7 @@ endif()
 
 # Dependency: OpenCV
 # We use OpenCV as the backend for all image operations.
-find_package(OpenCV COMPONENTS features2d calib3d imgproc highgui core REQUIRED)
+find_package(OpenCV COMPONENTS features2d xfeatures2d calib3d imgproc highgui core REQUIRED)
 message(STATUS "OpenCVIncludes: ${OpenCV_INCLUDE_DIRS}")
 message(STATUS "OpenCVLibs: ${OpenCV_LIBS}")
 

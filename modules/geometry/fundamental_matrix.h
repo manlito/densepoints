@@ -11,7 +11,7 @@ namespace DensePoints {
     FundamentalMatrix ComputeFundamentalMatrix(const ProjectionMatrix &projection_matrix_1,
                                                const ProjectionMatrix &projection_matrix_2);
     Line2D LineFromFundamentalMatrix(FundamentalMatrix &fundamental_matrix, Vector2 point);
-    float YCoordinateAt(Line2D &line, float x_coordinate);
+    double YCoordinateAt(Line2D &line, double x_coordinate);
   }
 }
 
