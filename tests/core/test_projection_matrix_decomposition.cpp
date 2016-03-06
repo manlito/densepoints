@@ -13,7 +13,6 @@ TEST(Core, ProjectionMatrixDecomposition) {
   P << 3.53553e2, 3.39645e2, 2.77744e2, -1.44946e6,
       -1.03528e2, 2.33212e1, 4.59607e2, -6.32525e5,
       7.07107e-1, -3.53553e-1, 6.12372e-1, -9.18559e2;
-  std::cout << "P: " << std::endl << P << std::endl;
 
   View view(P);
   Matrix3 intrinsics = view.GetIntrinsics();
@@ -31,4 +30,7 @@ TEST(Core, ProjectionMatrixDecomposition) {
     }
   }
   Vector3 center = view.GetCameraCenter();
+  EXPECT_NEAR(center[0], 1000, 0.01);
+  EXPECT_NEAR(center[1], 2000, 0.01);
+  EXPECT_NEAR(center[2], 1500, 0.01);
 }
