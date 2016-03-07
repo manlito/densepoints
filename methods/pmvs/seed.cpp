@@ -38,6 +38,9 @@ void Seed::GenerateSeeds(std::vector<Vector3> &seeds)
   // Triangulate
   TriangulateMatches();
 
+  // Setup patches
+  CreatePatchesFromPoints();
+
   LOG(INFO) << "Done";
 }
 
@@ -441,7 +444,7 @@ void Seed::TriangulateMatches()
     }
   }
 
-//#ifdef DEBUG_PMVS_SEEDS
+#ifdef DEBUG_PMVS_SEEDS
   // Debug triangulation
   rplycpp::PLYWriter writer;
   writer.Open("triangulation.ply");
@@ -461,6 +464,58 @@ void Seed::TriangulateMatches()
     writer.AddRow(std::vector<double> {point[0], point[1], point[2]});
   }
   writer.Close();
-//#endif
+#endif
+}
 
+void Seed::CreatePatchesFromPoints()
+{
+  for (size_t point_index = 0; point_index < points_.size(); ++point_index) {
+    // Look for a reference image by distance to the camera center
+    // to the optical center
+    const Vector3 point = points_[point_index];
+    double min_distance = (point - views_[0].GetCameraCenter()).norm();
+    size_t min_index = 0;
+    for (size_t camera_index = 1; camera_index < views_.size(); ++camera_index) {
+      double distance = (point - views_[camera_index].GetCameraCenter()).norm();
+      if (distance < min_distance) {
+        min_index = camera_index;
+        min_distance = distance;
+      }
+    }
+    Vector3 patch_to_center = point - views_[min_index].GetCameraCenter();
+    Vector3 normal = patch_to_center / patch_to_center[2];
+    Patch patch;
+    patch.SetReferenceImage(min_index);
+    patch.SetPosition(point);
+    patch.SetNormal(normal);
+    patches_.push_back(patch);
+  }
+
+  // Debug triangulation
+  rplycpp::PLYWriter writer;
+  writer.Open("patches_seed.ply");
+  std::vector<rplycpp::PLYProperty> properties;
+  rplycpp::PLYProperty property;
+  property.type = rplycpp::PLYDataType::PLY_FLOAT;
+  property.name = "x";
+  properties.push_back(property);
+  property.name = "y";
+  properties.push_back(property);
+  property.name = "z";
+  properties.push_back(property);
+  property.name = "nx";
+  properties.push_back(property);
+  property.name = "ny";
+  properties.push_back(property);
+  property.name = "nz";
+  properties.push_back(property);
+  writer.AddElement("vertex", properties, points_.size());
+
+  // Add the data IN THE SAME ORDER!
+  for (const Patch &patch : patches_) {
+    const PointXYZRGBNormal point = patch.GetPoint();
+    writer.AddRow(std::vector<double> { point.x, point.y, point.z,
+                                        point.normal_x, point.normal_y, point.normal_z});
+  }
+  writer.Close();
 }

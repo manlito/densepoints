@@ -15,8 +15,8 @@ namespace DensePoints {
       Seed(std::vector<View> &views,
            DetectorType detector_type = DetectorType::ORB,
            MatcherType matcher_type = MatcherType::kNN,
-           bool epipolar_matching = true,
-           float max_epipolar_distance = 0.5,
+           bool epipolar_matching = false,
+           float max_epipolar_distance = 1.5,
            size_t cell_size = 32,
            size_t max_keypoints_per_cell = 4) :
         views_(views),
@@ -38,13 +38,13 @@ namespace DensePoints {
       // Standard feature matching
       void MatchKeypoints();
       void FilterMatches();
+      void GetAllMatches(KeypointImagePair &keypoint_index,
+                         std::vector<KeypointImagePair> &keypoints_indices);
+      void TriangulateMatches();
+      void CreatePatchesFromPoints();
 
       // Matching using only distance to epipolar line
       void DirectEpipolarMatching();
-      void GetAllMatches(KeypointImagePair &keypoint_index,
-                         std::vector<KeypointImagePair> &keypoints_indices);
-
-      void TriangulateMatches();
 
       bool AddSeed(Vector3 X);
 
@@ -54,6 +54,7 @@ namespace DensePoints {
       ImagesPairsList pairs_list_;
       std::vector<std::vector<cv::DMatch>> matches_;
       std::vector<Vector3> points_;
+      std::vector<Patch> patches_;
 
       DetectorType detector_type_;
       MatcherType matcher_type_;

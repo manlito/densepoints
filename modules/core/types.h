@@ -25,7 +25,7 @@ namespace DensePoints {
   typedef pcl::PointXYZ PointXYZ;
   typedef pcl::PointCloud<PointXYZ> PointCloudXYZ;
   typedef pcl::PointXYZRGBNormal PointXYZRGBNormal;
-  typedef pcl::PointCloud<PointXYZ> PointCloudXYZRGBNormal;
+  typedef pcl::PointCloud<PointXYZRGBNormal> PointCloudXYZRGBNormal;
 
   // Matching
   typedef std::pair<size_t, size_t> ImagesPair;
