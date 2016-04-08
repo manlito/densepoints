@@ -67,3 +67,24 @@ void View::SetProjectionMatrix(const ProjectionMatrix &projection_matrix) {
   camera_intrinsics_ /= camera_intrinsics_(2, 2);
   camera_extrinsics_ = signs * E;
 }
+
+Vector2 View::ProjectPoint(const Vector3 &point) const {
+  Vector4 point_3_homogenous;
+  point_3_homogenous << point, 1;
+  Vector3 point_homogeneous = projection_matrix_ * point_3_homogenous;
+  return Vector2(point_homogeneous.head(2) / point_homogeneous[2]);
+}
+
+bool View::IsPointInside(const Vector3 &point) const {
+  const Vector2 projected_point = ProjectPoint(point);
+  if (projected_point[0] > 0 && projected_point[0] < image_.cols &&
+      projected_point[1] > 0 && projected_point[1] < image_.rows) {
+    return true;
+  }
+}
+
+Vector3 View::GetXAxis() const
+{
+  return camera_extrinsics_.row(0).head(3);
+}
+

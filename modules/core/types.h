@@ -31,6 +31,8 @@ namespace DensePoints {
   typedef std::pair<size_t, size_t> ImagesPair;
   typedef std::vector<ImagesPair> ImagesPairsList;
 
+  // ROI
+  typedef cv::Rect Rectangle;
 
   class View {
   public:
@@ -50,6 +52,13 @@ namespace DensePoints {
     Matrix3 GetIntrinsics() const { return camera_intrinsics_; }
     ProjectionMatrix GetExtrinsics() const { return camera_extrinsics_; }
     Vector3 GetCameraCenter() const { return camera_center_; }
+    Vector2 ProjectPoint(const Vector3 &point) const;
+    Vector3 GetXAxis() const;
+
+    size_t Height() const { return image_.rows; }
+    size_t Width() const { return image_.cols; }
+
+    bool IsPointInside(const Vector3 &point) const;
 
   private:
     ProjectionMatrix projection_matrix_;

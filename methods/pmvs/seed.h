@@ -18,14 +18,16 @@ namespace DensePoints {
            bool epipolar_matching = false,
            float max_epipolar_distance = 1.5,
            size_t cell_size = 32,
-           size_t max_keypoints_per_cell = 4) :
+           size_t max_keypoints_per_cell = 4,
+           size_t patch_size = 21) :
         views_(views),
         detector_type_(detector_type),
         matcher_type_(matcher_type),
         epipolar_matching_(epipolar_matching),
         max_epipolar_distance_(max_epipolar_distance),
         cell_size_(cell_size),
-        max_keypoints_per_cell_(max_keypoints_per_cell) {}
+        max_keypoints_per_cell_(max_keypoints_per_cell),
+        patch_size_(patch_size) {}
 
       void GenerateSeeds(std::vector<Vector3> &seeds);
     protected:
@@ -48,6 +50,12 @@ namespace DensePoints {
 
       bool AddSeed(Vector3 X);
 
+      // Optimization
+      void OptimizePatches();
+
+      // Utility functions
+      void PrintPatches(const std::string folder_name);
+
       std::vector<View> &views_;
       std::vector<std::vector<cv::KeyPoint>> keypoints_;
       std::vector<cv::Mat> descriptors_;
@@ -62,6 +70,7 @@ namespace DensePoints {
       bool epipolar_matching_;
       size_t cell_size_;
       size_t max_keypoints_per_cell_;
+      size_t patch_size_;
     };
 
   }

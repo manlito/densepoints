@@ -5,11 +5,14 @@
 #include <opencv2/features2d.hpp>
 #include "easylogging/easylogging.h"
 #include "seed.h"
+#include "optimization_opencv.h"
 #include "core/grid.h"
 #include "geometry/fundamental_matrix.h"
 #include "geometry/triangulation.h"
 #include "rplycpp/src/rplycpp.hpp"
+#include "io/file_utils.h"
 
+using namespace DensePoints;
 using namespace DensePoints::PMVS;
 
 void Seed::GenerateSeeds(std::vector<Vector3> &seeds)
@@ -40,6 +43,9 @@ void Seed::GenerateSeeds(std::vector<Vector3> &seeds)
 
   // Setup patches
   CreatePatchesFromPoints();
+
+  // Refine patches
+  OptimizePatches();
 
   LOG(INFO) << "Done";
 }
@@ -72,7 +78,11 @@ void Seed::DetectKeypoints()
     cv::Mat grayscale_image;
     cv::cvtColor(views_[view_index].GetImage(), grayscale_image, cv::COLOR_BGR2GRAY);
     cv::drawKeypoints(image, keypoints, image);
-    cv::imwrite(std::string("kp_") + std::to_string(view_index) + std::string(".jpg"), grayscale_image);
+    LOG(INFO) << "Path: " << stlplus::create_filespec(stlplus::folder_append_separator(DEBUG_OUTPUT_PATH) + "keypoints",
+                                                      std::string("kp_") + std::to_string(view_index), "jpg");
+    const std::string output_folder = IO::GetFolder({ DEBUG_OUTPUT_PATH, "keypoints" });
+    cv::imwrite(stlplus::create_filespec(output_folder, std::string("kp_") + std::to_string(view_index), "jpg"),
+                grayscale_image);
     LOG(INFO) << keypoints.size() << " Keypoints for image index " << view_index;
 #endif
 
@@ -250,8 +260,9 @@ void Seed::MatchKeypoints()
     cv::drawMatches(grayscale_image_1, keypoints_[pair.first],
         grayscale_image_2, keypoints_[pair.second],
         matches, output_image);
-    cv::imwrite(std::string("matches_") + std::to_string(pair.first) + "_"
-        + std::to_string(pair.second) + std::string(".jpg"), output_image);
+    cv::imwrite(stlplus::create_filespec(IO::GetFolder({ DEBUG_OUTPUT_PATH, "matches" }),
+                                         std::string("matches_") + std::to_string(pair.first) + "_" + std::to_string(pair.second),
+                                         ".jpg"), output_image);
 #endif
 
 #pragma omp critical
@@ -301,8 +312,9 @@ void Seed::DirectEpipolarMatching()
     cv::drawMatches(grayscale_image_1, keypoints_[pair.first],
         grayscale_image_2, keypoints_[pair.second],
         matches, output_image);
-    cv::imwrite(std::string("matches_") + std::to_string(pair.first) + "_"
-        + std::to_string(pair.second) + std::string(".jpg"), output_image);
+    cv::imwrite(stlplus::create_filespec(IO::GetFolder({ DEBUG_OUTPUT_PATH, "matches" }),
+                                         std::string("matches_") + std::to_string(pair.first) + "_" + std::to_string(pair.second),
+                                         ".jpg"), output_image);
 #endif
 
 #pragma omp critical
@@ -355,8 +367,9 @@ void Seed::FilterMatches()
     cv::drawMatches(grayscale_image_1, keypoints_[pair.first],
         grayscale_image_2, keypoints_[pair.second],
         matches, output_image);
-    cv::imwrite(std::string("matches_") + std::to_string(pair.first) + "_"
-        + std::to_string(pair.second) + std::string("_f.jpg"), output_image);
+    cv::imwrite(stlplus::create_filespec(IO::GetFolder({ DEBUG_OUTPUT_PATH, "matches" }),
+                                         std::string("matches_") + std::to_string(pair.first) + "_" + std::to_string(pair.second) + "_f",
+                                         ".jpg"), output_image);
 #endif
 
 #pragma omp critical
@@ -447,7 +460,8 @@ void Seed::TriangulateMatches()
 #ifdef DEBUG_PMVS_SEEDS
   // Debug triangulation
   rplycpp::PLYWriter writer;
-  writer.Open("triangulation.ply");
+  writer.Open(stlplus::create_filespec(IO::GetFolder({ DEBUG_OUTPUT_PATH, "points" }),
+                                       "triangulation", "ply"));
   std::vector<rplycpp::PLYProperty> properties;
   rplycpp::PLYProperty property;
   property.type = rplycpp::PLYDataType::PLY_FLOAT;
@@ -469,6 +483,7 @@ void Seed::TriangulateMatches()
 
 void Seed::CreatePatchesFromPoints()
 {
+#pragma omp parallel for
   for (size_t point_index = 0; point_index < points_.size(); ++point_index) {
     // Look for a reference image by distance to the camera center
     // to the optical center
@@ -483,17 +498,24 @@ void Seed::CreatePatchesFromPoints()
       }
     }
     Vector3 patch_to_center = point - views_[min_index].GetCameraCenter();
-    Vector3 normal = patch_to_center / patch_to_center[2];
+    Vector3 normal = patch_to_center / patch_to_center.norm();
+    // Init patch
     Patch patch;
     patch.SetReferenceImage(min_index);
     patch.SetPosition(point);
     patch.SetNormal(normal);
-    patches_.push_back(patch);
+    patch.InitRelatedImages(views_);
+#pragma omp critical
+    {
+      patches_.push_back(patch);
+    }
   }
 
-  // Debug triangulation
+#ifdef DEBUG_PMVS_SEEDS
+  // Debug patches
   rplycpp::PLYWriter writer;
-  writer.Open("patches_seed.ply");
+  writer.Open(stlplus::create_filespec(IO::GetFolder({ DEBUG_OUTPUT_PATH, "points" }),
+                                       "patches_seed", "ply"));
   std::vector<rplycpp::PLYProperty> properties;
   rplycpp::PLYProperty property;
   property.type = rplycpp::PLYDataType::PLY_FLOAT;
@@ -518,4 +540,49 @@ void Seed::CreatePatchesFromPoints()
                                         point.normal_x, point.normal_y, point.normal_z});
   }
   writer.Close();
+#endif
+}
+
+void Seed::OptimizePatches()
+{
+  // PrintPatches("optimized");
+  const std::string output_folder = IO::GetFolder({ DEBUG_OUTPUT_PATH, "patches", "seeds", "initial_projected"});
+  const size_t patch_radius = patch_size_ / 2;
+  for (size_t patch_index = 0; patch_index < patches_.size(); ++patch_index) {
+    Patch &patch = patches_[patch_index];
+    OptimizationOpenCV optimizer(patch, views_);
+
+    // Debug texture grabbing
+    std::vector<cv::Mat> textures;
+    optimizer.GetProjectedTextures(textures);
+    for (const cv::Mat &texture : textures) {
+    }
+    if (!optimizer.Optimize()) {
+      // Reject the patch
+    }
+  }
+}
+
+void Seed::PrintPatches(const std::string folder_name)
+{
+  const std::string output_folder = IO::GetFolder({ DEBUG_OUTPUT_PATH, "patches", "seeds", folder_name});
+  const size_t patch_radius = patch_size_ / 2;
+  for (size_t patch_index = 0; patch_index < patches_.size(); ++patch_index) {
+    // For each patch, get its related images
+    Patch &patch = patches_[patch_index];
+    const ImagesIndices& visible_images = patch.GetTrullyVisibleImages();
+    const ImagesIndices& candidate_images = patch.GetPotentiallyVisibleImages();
+
+    // Some process should verify images with boundaries outside of the image
+    for (const size_t view_index : visible_images) {
+      const cv::Mat &image = views_[view_index].GetImage();
+      const Vector2 projected_point = views_[view_index].ProjectPoint(patch.GetPosition());
+      if (projected_point[0] > patch_radius && projected_point[0] < image.cols - patch_radius &&
+          projected_point[1] > patch_radius && projected_point[1] < image.rows - patch_radius) {
+        cv::imwrite(stlplus::create_filespec(output_folder, std::string("patch_") + std::to_string(patch_index) + "_v_" + std::to_string(view_index), "jpg"),
+                    image(cv::Rect(projected_point[0] - patch_radius, projected_point[1] - patch_radius, patch_size_, patch_size_)));
+      }
+
+    }
+  }
 }
