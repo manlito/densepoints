@@ -55,6 +55,7 @@ namespace DensePoints {
 
       // Utility functions
       void PrintPatches(const std::string folder_name);
+      void PrintTextures(const std::string folder_name);
 
       std::vector<View> &views_;
       std::vector<std::vector<cv::KeyPoint>> keypoints_;

@@ -57,7 +57,6 @@ void Optimization::GetProjectedTextures(std::vector<cv::Mat> &textures)
       textures.push_back(cv::Mat());
       continue;
     }
-    LOG(INFO) << "ROI: " << roi.x << " " << roi.y << " " << roi.width << " " << roi.height;
 
     // Warp the homography to extract the patch
     cv::Mat texture;
