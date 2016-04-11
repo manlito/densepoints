@@ -11,6 +11,16 @@ namespace DensePoints {
 
     class Patch {
     public:
+
+      // Generates a homography than can be used to warp path's projection
+      // to a given image
+      bool ComputePatchToViewHomography(View &view,
+                                        size_t cell_size,
+                                        const Vector3 &x_axis,
+                                        const Vector3 &y_axis,
+                                        cv::Mat &homography,
+                                        cv::Rect2i &roi);
+
       void SetReferenceImage(size_t image_index) {
         reference_image_ = image_index;
       }

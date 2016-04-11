@@ -12,11 +12,10 @@ void View::Load()
 
 cv::Mat& View::GetImage()
 {
-  if (image_loaded_) {
-    return image_;
-  } else {
+  if (!image_loaded_) {
     Load();
   }
+  return image_;
 }
 
 void View::Unload()
@@ -81,6 +80,7 @@ bool View::IsPointInside(const Vector3 &point) const {
       projected_point[1] > 0 && projected_point[1] < image_.rows) {
     return true;
   }
+  return false;
 }
 
 Vector3 View::GetXAxis() const

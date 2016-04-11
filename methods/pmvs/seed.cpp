@@ -547,15 +547,28 @@ void Seed::OptimizePatches()
 {
   // PrintPatches("optimized");
   const std::string output_folder = IO::GetFolder({ DEBUG_OUTPUT_PATH, "patches", "seeds", "initial_projected"});
+  if (!stlplus::folder_exists(output_folder)) {
+    stlplus::folder_create(output_folder);
+  }
   const size_t patch_radius = patch_size_ / 2;
   for (size_t patch_index = 0; patch_index < patches_.size(); ++patch_index) {
     Patch &patch = patches_[patch_index];
-    OptimizationOpenCV optimizer(patch, views_);
+    OptimizationOpenCV optimizer(patch, views_, cell_size_);
 
     // Debug texture grabbing
     std::vector<cv::Mat> textures;
+    std::vector<size_t> invalid_views;
     optimizer.GetProjectedTextures(textures);
+    size_t view_index = 0;
     for (const cv::Mat &texture : textures) {
+      if (!texture.empty()) {
+        cv::imwrite(stlplus::create_filespec(
+                      output_folder,
+                      std::string("tex_") + std::to_string(patch_index) + "_" + std::to_string(patch.GetTrullyVisibleImages()[view_index]),
+                      "jpg"),
+                    texture);
+      }
+      ++view_index;
     }
     if (!optimizer.Optimize()) {
       // Reject the patch

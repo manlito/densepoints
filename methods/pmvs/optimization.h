@@ -9,11 +9,14 @@ namespace DensePoints {
   namespace PMVS {
     class Optimization {
     public:
-      Optimization(Patch &patch, const std::vector<View> &views) :
+      Optimization(Patch &patch,
+                   std::vector<View> &views,
+                   size_t cell_size) :
         patch_(patch),
-        views_(views) {}
+        views_(views),
+        cell_size_(cell_size){}
       bool Optimize();
-      void GetProjectedTextures(std::vector<cv::Mat> &textures) const;
+      void GetProjectedTextures(std::vector<cv::Mat> &textures);
     private:
       virtual bool OptimizePatch(std::vector<cv::Mat> &textures,
                                  double &depth,
@@ -23,7 +26,8 @@ namespace DensePoints {
       void UpdatePatch(double depth, double roll, double pitch);
 
       Patch &patch_;
-      const std::vector<View> &views_;
+      std::vector<View> &views_;
+      size_t cell_size_;
     };
   }
 }
