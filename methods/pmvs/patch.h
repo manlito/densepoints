@@ -8,11 +8,12 @@ namespace DensePoints {
   namespace PMVS {
 
     typedef std::vector<size_t> ImagesIndices;
+    enum class ErrorMeasurement { NCC, SSD, SAD };
 
     class Patch {
     public:
 
-      // Generates a homography than can be used to warp path's projection
+      // Generates a homography than can be used to warp patch's projection
       // to a given image
       bool ComputePatchToViewHomography(View &view,
                                         size_t cell_size,
@@ -52,7 +53,8 @@ namespace DensePoints {
         return candidate_images_;
       }
 
-      float ComputeScore();
+      // Patch projection and textures
+      float ComputeScore(Patch &patch);
       const PointXYZRGBNormal GetPoint() const { return point_; }
     private:
       // For patch optimization, we keep a copy here
@@ -62,7 +64,7 @@ namespace DensePoints {
       size_t pointcloud_index_;
 
       // Additional information of the patch
-      double score_;
+      ErrorMeasurement error_measurement_ = ErrorMeasurement::SSD;
       size_t reference_image_;
       ImagesIndices visible_images_;
       ImagesIndices candidate_images_;

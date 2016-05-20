@@ -10,11 +10,7 @@ namespace DensePoints {
     class OptimizationOpenCV : public Optimization {
     public:
       using Optimization::Optimization;
-    private:
-      bool OptimizePatch(std::vector<cv::Mat> &textures,
-                         double &depth,
-                         double &roll,
-                         double &pitch);
+      bool Optimize();
     };
   }
 }

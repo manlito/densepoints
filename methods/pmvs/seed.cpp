@@ -546,17 +546,21 @@ void Seed::CreatePatchesFromPoints()
 void Seed::OptimizePatches()
 {
 #ifdef DEBUG_PMVS_OPTIMIZATION
-    PrintTextures("initial_projected");
+     PrintTextures("initial_projected");
 #endif
   const size_t patch_radius = patch_size_ / 2;
   for (size_t patch_index = 0; patch_index < patches_.size(); ++patch_index) {
     Patch &patch = patches_[patch_index];
     OptimizationOpenCV optimizer(patch, views_, cell_size_);
+    optimizer.FilterByErrorMeasurement();
 
-    if (!optimizer.Optimize()) {
+    //if (!optimizer.Optimize()) {
       // Reject the patch
-    }
+    //}
   }
+#ifdef DEBUG_PMVS_OPTIMIZATION
+    PrintTextures("initial_optimized");
+#endif
 }
 
 void Seed::PrintPatches(const std::string folder_name)

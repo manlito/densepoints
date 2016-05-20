@@ -1,22 +1,10 @@
 #include "optimization.h"
+#include "core/error_measurements.h"
 #include "easylogging/easylogging.h"
 #include <opencv2/imgproc.hpp>
 
 using namespace DensePoints;
 using namespace DensePoints::PMVS;
-
-bool Optimization::Optimize()
-{
-  // Grab textures
-
-  // Parametrize
-
-  // Run the actual optimization
-
-  // Unparametrize
-
-  return true;
-}
 
 void Optimization::GetProjectedTextures(std::vector<cv::Mat> &textures)
 {
@@ -64,4 +52,30 @@ void Optimization::GetProjectedTextures(std::vector<cv::Mat> &textures)
     cv::warpPerspective(image(roi), texture, homography, cv::Size(cell_size_, cell_size_), cv::INTER_LINEAR, cv::BORDER_REPLICATE);
     textures.push_back(texture);
   }
+}
+
+void Optimization::ParametrizePatch(double &depth, double &roll, double &pitch)
+{
+  // Depth is the length of the vector from patch to reference image center
+  depth = (patch_.GetPosition() - views_[patch_.GetReferenceImage()].GetCameraCenter()).norm();
+}
+
+void Optimization::FilterByErrorMeasurement()
+{
+  // Textures are obtained in the same order as TrullyVisible array
+  std::vector<cv::Mat> textures;
+  GetProjectedTextures(textures);
+  // Store the Score
+  std::vector<double> scores;
+  std::stringstream scores_print;
+  for (size_t texture_index = 0; texture_index < textures.size(); ++texture_index) {
+    if (texture_index > 0) {
+      double score = NCCScore(textures[0], textures[texture_index]);
+      scores.push_back(score);
+      scores_print << score << " ";
+    } else {
+      scores.push_back(0);
+    }
+  }
+  LOG(INFO) << "Score: " << scores_print.str();
 }
