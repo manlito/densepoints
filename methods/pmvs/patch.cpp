@@ -37,6 +37,11 @@ void Patch::InitRelatedImages(const std::vector<View> &views,
   }
 }
 
+void Patch::RemoveTrullyVisibleImage(size_t index)
+{
+  visible_images_.erase(visible_images_.begin() + index);
+}
+
 bool Patch::ComputePatchToViewHomography(View &view,
                                          size_t cell_size,
                                          const Vector3 &x_axis,

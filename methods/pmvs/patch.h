@@ -52,6 +52,7 @@ namespace DensePoints {
       const ImagesIndices& GetPotentiallyVisibleImages() const {
         return candidate_images_;
       }
+      void RemoveTrullyVisibleImage(size_t index);
 
       // Patch projection and textures
       float ComputeScore(Patch &patch);

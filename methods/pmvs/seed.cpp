@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <iterator>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/opencv_modules.hpp>
@@ -549,14 +550,33 @@ void Seed::OptimizePatches()
      PrintTextures("initial_projected");
 #endif
   const size_t patch_radius = patch_size_ / 2;
+  std::vector<size_t> patches_to_remove;
   for (size_t patch_index = 0; patch_index < patches_.size(); ++patch_index) {
     Patch &patch = patches_[patch_index];
     OptimizationOpenCV optimizer(patch, views_, cell_size_);
-    optimizer.FilterByErrorMeasurement();
+    if (optimizer.FilterByErrorMeasurement()) {
+      // If this function returns, it means that the patch
+      // is not valid (not enough textures)
+    } else {
+      // Mark the patch for removal
+      patches_to_remove.push_back(patch_index);
+    }
 
     //if (!optimizer.Optimize()) {
       // Reject the patch
     //}
+  }
+
+  // Remove patches
+  {
+    LOG(INFO) << patches_to_remove.size() << " patches need to be removed after filter by error measurement";
+    size_t remove_offset = 0;
+    for (size_t index_to_remove : patches_to_remove) {
+      auto patch_iterator = patches_.begin();
+      std::advance(patch_iterator, index_to_remove - remove_offset);
+      patches_.erase(patch_iterator);
+      ++remove_offset;
+    }
   }
 #ifdef DEBUG_PMVS_OPTIMIZATION
     PrintTextures("initial_optimized");

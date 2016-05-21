@@ -60,22 +60,38 @@ void Optimization::ParametrizePatch(double &depth, double &roll, double &pitch)
   depth = (patch_.GetPosition() - views_[patch_.GetReferenceImage()].GetCameraCenter()).norm();
 }
 
-void Optimization::FilterByErrorMeasurement()
+bool Optimization::FilterByErrorMeasurement()
 {
   // Textures are obtained in the same order as TrullyVisible array
   std::vector<cv::Mat> textures;
   GetProjectedTextures(textures);
   // Store the Score
   std::vector<double> scores;
-  std::stringstream scores_print;
   for (size_t texture_index = 0; texture_index < textures.size(); ++texture_index) {
     if (texture_index > 0) {
       double score = NCCScore(textures[0], textures[texture_index]);
       scores.push_back(score);
-      scores_print << score << " ";
-    } else {
-      scores.push_back(0);
     }
   }
-  LOG(INFO) << "Score: " << scores_print.str();
+
+  // Remove cases with empty scores
+  if (scores.size() == 0) {
+    return false;
+  }
+
+  // Remove TrullyVisible that have a low score
+  size_t removed_images = 0;
+  for (size_t score_index = 0; score_index < scores.size(); ++score_index) {
+    if (scores[score_index] < score_threshold_) {
+      patch_.RemoveTrullyVisibleImage(score_index - removed_images);
+      ++removed_images;
+    }
+  }
+
+  // Drop the patch if it finally has less than minimum_visible_image images
+  if (patch_.GetTrullyVisibleImages().size() < minimum_visible_image_) {
+    return false;
+  }
+
+  return true;
 }
