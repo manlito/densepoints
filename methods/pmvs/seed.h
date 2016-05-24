@@ -51,9 +51,12 @@ namespace DensePoints {
       bool AddSeed(Vector3 X);
 
       // Optimization
+      void OptimizeAndRefinePatches();
+      void FilterPatches();
       void OptimizePatches();
 
       // Utility functions
+      void RemovePatches(const std::vector<size_t> &patch_indices);
       void PrintPatches(const std::string folder_name);
       void PrintTextures(const std::string folder_name);
 

@@ -13,7 +13,7 @@ namespace DensePoints {
       Optimization(Patch &patch,
                    std::vector<View> &views,
                    size_t cell_size,
-                   double score_threshold = 0.7,
+                   double score_threshold = 0.6,
                    size_t minimum_visible_image = 3) :
         patch_(patch),
         views_(views),

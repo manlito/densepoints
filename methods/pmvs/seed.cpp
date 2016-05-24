@@ -45,8 +45,8 @@ void Seed::GenerateSeeds(std::vector<Vector3> &seeds)
   // Setup patches
   CreatePatchesFromPoints();
 
-  // Refine patches
-  OptimizePatches();
+  // Patch optimization
+  OptimizeAndRefinePatches();
 
   LOG(INFO) << "Done";
 }
@@ -544,43 +544,72 @@ void Seed::CreatePatchesFromPoints()
 #endif
 }
 
-void Seed::OptimizePatches()
+void Seed::OptimizeAndRefinePatches()
 {
 #ifdef DEBUG_PMVS_OPTIMIZATION
-     PrintTextures("initial_projected");
+  PrintTextures("initial_projected");
 #endif
-  const size_t patch_radius = patch_size_ / 2;
+
+  // Refine patches
+  FilterPatches();
+#ifdef DEBUG_PMVS_OPTIMIZATION
+  PrintTextures("initial_filtered");
+#endif
+
+  // Patch optimization
+  OptimizePatches();
+#ifdef DEBUG_PMVS_OPTIMIZATION
+     PrintTextures("initial_optimized");
+#endif
+
+}
+
+void Seed::FilterPatches()
+{
+  // Filter by NCC score
   std::vector<size_t> patches_to_remove;
+  {
+    for (size_t patch_index = 0; patch_index < patches_.size(); ++patch_index) {
+      Patch &patch = patches_[patch_index];
+      OptimizationOpenCV optimizer(patch, views_, cell_size_);
+      if (!optimizer.FilterByErrorMeasurement()) {
+        // Mark the patch for removal
+        patches_to_remove.push_back(patch_index);
+      }
+    }
+  }
+  // Prune patches
+  RemovePatches(patches_to_remove);
+}
+
+void Seed::OptimizePatches()
+{
+  std::vector<size_t> patches_to_remove;
+
+  // Optimize patches
   for (size_t patch_index = 0; patch_index < patches_.size(); ++patch_index) {
     Patch &patch = patches_[patch_index];
     OptimizationOpenCV optimizer(patch, views_, cell_size_);
-    if (optimizer.FilterByErrorMeasurement()) {
-      // If this function returns, it means that the patch
-      // is not valid (not enough textures)
-    } else {
+    if (!optimizer.Optimize()) {
       // Mark the patch for removal
       patches_to_remove.push_back(patch_index);
     }
-
-    //if (!optimizer.Optimize()) {
-      // Reject the patch
-    //}
   }
 
-  // Remove patches
-  {
-    LOG(INFO) << patches_to_remove.size() << " patches need to be removed after filter by error measurement";
-    size_t remove_offset = 0;
-    for (size_t index_to_remove : patches_to_remove) {
-      auto patch_iterator = patches_.begin();
-      std::advance(patch_iterator, index_to_remove - remove_offset);
-      patches_.erase(patch_iterator);
-      ++remove_offset;
-    }
+  // Prune patches
+  RemovePatches(patches_to_remove);
+}
+
+void Seed::RemovePatches(const std::vector<size_t> &patch_indices)
+{
+  LOG(INFO) << patch_indices.size() << " patches need to be removed after filter by error measurement";
+  size_t remove_offset = 0;
+  for (size_t index_to_remove : patch_indices) {
+    auto patch_iterator = patches_.begin();
+    std::advance(patch_iterator, index_to_remove - remove_offset);
+    patches_.erase(patch_iterator);
+    ++remove_offset;
   }
-#ifdef DEBUG_PMVS_OPTIMIZATION
-    PrintTextures("initial_optimized");
-#endif
 }
 
 void Seed::PrintPatches(const std::string folder_name)
