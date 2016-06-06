@@ -5,7 +5,9 @@
 
 namespace DensePoints {
 
-  double NCCScore(const cv::Mat patch_a, const cv::Mat patch_b);
+double NCCScoreByChannel(const cv::Mat patch_a, const cv::Mat patch_b);
+double NCCScore(const cv::Mat patch_a, const cv::Mat patch_b);
+double SSDScore(const cv::Mat patch_a, const cv::Mat patch_b);
 
 }
 

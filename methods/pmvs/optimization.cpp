@@ -8,19 +8,24 @@ using namespace DensePoints::PMVS;
 
 void Optimization::GetProjectedTextures(std::vector<cv::Mat> &textures)
 {
+  GetProjectedTextures(patch_.GetNormal(), patch_.GetPosition(), textures);
+}
+
+void Optimization::GetProjectedTextures(const Vector3 normal, const Vector3 position,
+                                        std::vector<cv::Mat> &textures)
+{
   // Project unitary vectors using patch parameters into ref image
   // Unitary vectors should use corresponding roll and pitch
 
   // Get a vector in the same direction as the X direction of the image
   const View &reference_view = views_[patch_.GetReferenceImage()];
-  Vector3 patch_normal = patch_.GetNormal();
   Vector3 reference_view_x_axis = reference_view.GetXAxis();
-  Vector3 reference_view_y_axis = patch_normal.cross(reference_view_x_axis);
+  Vector3 reference_view_y_axis = normal.cross(reference_view_x_axis);
 
   // Take the largest size, as projected in the image
   Vector2 projected_center, projected_x, projected_y;
-  projected_center = reference_view.ProjectPoint(patch_.GetPosition());
-  projected_x = reference_view.ProjectPoint(patch_.GetPosition() + reference_view_x_axis);
+  projected_center = reference_view.ProjectPoint(position);
+  projected_x = reference_view.ProjectPoint(position + reference_view_x_axis);
   double dx = (projected_x - projected_center).norm();
 
   LOG_IF(dx == 0, FATAL) << "Projection of unitary vector on x-axis retuned 0 length vector";
@@ -41,7 +46,7 @@ void Optimization::GetProjectedTextures(std::vector<cv::Mat> &textures)
                                                              roi);
     // Insert an empty image for texture where at least one corner
     // is outside the image
-    if (!valid_texture) {
+    if (!valid_texture || roi.width <= 0 || roi.height <= 0) {
       textures.push_back(cv::Mat());
       continue;
     }
@@ -56,8 +61,45 @@ void Optimization::GetProjectedTextures(std::vector<cv::Mat> &textures)
 
 void Optimization::ParametrizePatch(double &depth, double &roll, double &pitch)
 {
+  ParametrizePatch(patch_.GetNormal(), patch_.GetPosition(), depth, roll, pitch);
+}
+
+void Optimization::ParametrizePatch(const Vector3 normal, const Vector3 position,
+                                    double &depth, double &roll, double &pitch)
+{
   // Depth is the length of the vector from patch to reference image center
-  depth = (patch_.GetPosition() - views_[patch_.GetReferenceImage()].GetCameraCenter()).norm();
+  depth = (position - views_[patch_.GetReferenceImage()].GetCameraCenter()).norm();
+  // As for angles, we know the patch x-axis is aligned with image x-axis.
+  // Let's build a rotatio matrix, then a rotation matrix to angle conversion
+  Vector3 x_axis = views_[patch_.GetReferenceImage()].GetXAxis().normalized();
+  Vector3 y_axis = normal.cross(x_axis);
+  Vector3 z_axis = x_axis.cross(y_axis);
+
+  roll = std::atan2(z_axis(1), z_axis(2));
+  pitch = std::atan2(-z_axis(0), std::sqrt(std::pow(z_axis(1), 2) + std::pow(z_axis(2), 2)));
+}
+
+void Optimization::UnparametrizePatch(double depth, double roll, double pitch,
+                                      Vector3 &normal, Vector3 &position)
+{
+  const Vector3 &camera_center = views_[patch_.GetReferenceImage()].GetCameraCenter();
+  const Vector3 &current_position = patch_.GetPosition();
+  position = camera_center + (1 + depth) * (current_position - camera_center);
+  // This method assumes given angles are relative, so that we onlu
+  // need to compute a rotation after the initial patch angle
+  double ca = std::cos(roll);
+  double sa = std::sin(roll);
+  double cb = std::cos(pitch);
+  double sb = std::sin(pitch);
+  Matrix3 rotation;
+  rotation.row(0) <<      cb,   0,     -sb;
+  rotation.row(1) << sa * sb,  ca, cb * sa ;
+  rotation.row(2) << ca * sb, -sa, ca * cb;
+//  rotation.row(0) <<      cb,   0,     -sb;
+//  rotation.row(1) << sa * sb,  ca, cb * sa ;
+//  rotation.row(2) << ca * sb, -sa, ca * cb;
+  // Compositional update
+  normal = rotation * patch_.GetNormal();
 }
 
 bool Optimization::FilterByErrorMeasurement()

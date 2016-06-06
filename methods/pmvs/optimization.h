@@ -21,12 +21,21 @@ namespace DensePoints {
         score_threshold_(score_threshold),
         minimum_visible_image_(minimum_visible_image) { }
       virtual bool Optimize() = 0;
+
+      // Get vector of patches
       void GetProjectedTextures(std::vector<cv::Mat> &textures);
+
+      // Used during minimization to search for a better parameter set
+      void GetProjectedTextures(const Vector3 normal, const Vector3 position,
+                                std::vector<cv::Mat> &textures);
+      void ParametrizePatch(const Vector3 normal, const Vector3 position,
+                            double &depth, double &roll, double &pitch);
+      void ParametrizePatch(double &depth, double &roll, double &pitch);
+      void UnparametrizePatch(double depth, double roll, double pitch,
+                              Vector3 &normal, Vector3 &position);
       // Patch related filters
       bool FilterByErrorMeasurement();
-    private:
-      void ParametrizePatch(double &depth, double &roll, double &pitch);
-      void UpdatePatch(double depth, double roll, double pitch);
+    protected:
 
       Patch &patch_;
       std::vector<View> &views_;
