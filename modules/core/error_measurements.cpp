@@ -1,23 +1,30 @@
 #include <opencv2/imgproc.hpp>
 #include "error_measurements.h"
-#include "easylogging/easylogging.h"
+
+inline void DensePoints::ToFloatMat(const cv::Mat patch, cv::Mat &patch_float)
+{
+  // Convert to gray scale if necessary
+  cv::Mat patch_grayscale;
+  if (patch.type() == CV_8UC3) {
+    cv::cvtColor(patch, patch_grayscale, CV_BGR2GRAY);
+  } else {
+    patch_grayscale = patch;
+  }
+
+  // Convert to float patches, to support negative values
+  patch_grayscale.convertTo(patch_float, CV_32F);
+}
 
 double DensePoints::SSDScore(cv::Mat patch_a, cv::Mat patch_b)
 {
   if (patch_a.empty() || patch_b.empty()) {
-    LOG(WARNING) << "Trying to compare with empty image";
     return -1;
   }
 
-  // Conver to float patches, to support negative values
-  cv::Mat patch_grayscale_a, patch_grayscale_b;
-  cv::cvtColor(patch_a, patch_grayscale_a, CV_BGR2GRAY);
-  cv::cvtColor(patch_b, patch_grayscale_b, CV_BGR2GRAY);
+  // Conver to float
   cv::Mat patch_float_a, patch_float_b;
-  patch_grayscale_a.convertTo(patch_float_a, CV_32F);
-  patch_grayscale_b.convertTo(patch_float_b, CV_32F);
-  patch_float_a /= 255.0;
-  patch_float_b /= 255.0;
+  ToFloatMat(patch_a, patch_float_a);
+  ToFloatMat(patch_b, patch_float_b);
 
   size_t patch_size = patch_a.cols * patch_a.rows;
   // SSD computation: (f - h)
@@ -29,17 +36,13 @@ double DensePoints::SSDScore(cv::Mat patch_a, cv::Mat patch_b)
 double DensePoints::NCCScore(cv::Mat patch_a, cv::Mat patch_b)
 {
   if (patch_a.empty() || patch_b.empty()) {
-    LOG(WARNING) << "Trying to compare with empty image";
     return -1;
   }
 
-  // Conver to float patches, to support negative values
-  cv::Mat patch_grayscale_a, patch_grayscale_b;
-  cv::cvtColor(patch_a, patch_grayscale_a, CV_BGR2GRAY);
-  cv::cvtColor(patch_b, patch_grayscale_b, CV_BGR2GRAY);
+  // Conver to float
   cv::Mat patch_float_a, patch_float_b;
-  patch_grayscale_a.convertTo(patch_float_a, CV_32F);
-  patch_grayscale_b.convertTo(patch_float_b, CV_32F);
+  ToFloatMat(patch_a, patch_float_a);
+  ToFloatMat(patch_b, patch_float_b);
 
   size_t patch_size = patch_a.cols * patch_a.rows;
   // NCC computation: (f - f^hat) . (h - h^hat) / (Sf Sh)
@@ -59,7 +62,6 @@ double DensePoints::NCCScore(cv::Mat patch_a, cv::Mat patch_b)
 double DensePoints::NCCScoreByChannel(cv::Mat patch_a, cv::Mat patch_b)
 {
   if (patch_a.empty() || patch_b.empty()) {
-    LOG(WARNING) << "Trying to compare with empty image";
     return -1;
   }
 

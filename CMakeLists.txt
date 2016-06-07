@@ -58,6 +58,7 @@ set(DENSEPOINTS_LIBS
 # DensePoints: Libraries
 set(DENSEPOINTS_THIRD_PARTY_LIBS
     ${CMAKE_THREAD_LIBS_INIT}
+    ${OpenCV_LIBS}
     stlplus
     rplycpp
     rply

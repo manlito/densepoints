@@ -35,8 +35,6 @@ public:
     double sum = std::accumulate(scores.begin(), scores.end(), 0.0);
     double mean = sum / scores.size();
 
-    // Errors will be reported in range from 0 to 2
-    LOG(INFO) << "Err: " << mean << " / " << scores[0];
     return mean;
   }
 private:
@@ -49,7 +47,6 @@ bool OptimizationOpenCV::Optimize()
   cv::Ptr<cv::MinProblemSolver::Function> functor =
       cv::makePtr<PatchOptimizationOpenCVFunctor>(this);
 
-  LOG(INFO) << "Optimization START";
   // Initial parameters
   double depth, roll, pitch;
   depth = 0, roll = 0, pitch = 0;
