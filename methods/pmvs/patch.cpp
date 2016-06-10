@@ -5,7 +5,7 @@
 using namespace DensePoints;
 using namespace DensePoints::PMVS;
 
-void Patch::InitRelatedImages(const std::vector<View> &views,
+void Patch::InitRelatedImages(const Views views,
                               double trully_visible_threshold,
                               double potentially_visible_threshold)
 {
@@ -15,9 +15,9 @@ void Patch::InitRelatedImages(const std::vector<View> &views,
   candidate_images_.clear();
 
   // Project the patch to each image
-  for (size_t view_index = 0; view_index < views.size(); ++view_index) {
+  for (size_t view_index = 0; view_index < views->size(); ++view_index) {
     if (view_index != reference_image_) {
-      const View &view = views[view_index];
+      const View &view = (*views)[view_index];
 
       // Check the point is actually inside the other image
       if (!view.IsPointInside(position)) {

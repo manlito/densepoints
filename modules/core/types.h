@@ -72,6 +72,6 @@ namespace DensePoints {
     bool image_loaded_;
     cv::Mat image_;
   };
-
+  typedef std::shared_ptr<std::vector<View>> Views;
 }
 #endif // DENSEPOINTS_CORE_TYPES

@@ -16,7 +16,7 @@
 using namespace DensePoints;
 using namespace DensePoints::PMVS;
 
-void Seed::GenerateSeeds(std::vector<Vector3> &seeds)
+void Seed::GenerateSeeds()
 {
   // Detect keypoints
   DetectKeypoints();
@@ -53,12 +53,12 @@ void Seed::GenerateSeeds(std::vector<Vector3> &seeds)
 
 void Seed::DetectKeypoints()
 {
-  keypoints_.resize(views_.size());
+  keypoints_.resize(views_->size());
 #pragma omp parallel for
-  for (size_t view_index = 0; view_index < views_.size(); ++view_index) {
+  for (size_t view_index = 0; view_index < views_->size(); ++view_index) {
 
     cv::Mat image;
-    views_[view_index].GetImage().copyTo(image);
+    (*views_)[view_index].GetImage().copyTo(image);
     std::vector<cv::KeyPoint> keypoints;
 
     switch (detector_type_) {
@@ -98,10 +98,10 @@ void Seed::DetectKeypoints()
 void Seed::FilterKeypoints()
 {
 #pragma omp parallel for
-  for (size_t view_index = 0; view_index < views_.size(); ++view_index) {
+  for (size_t view_index = 0; view_index < views_->size(); ++view_index) {
     const size_t initial_keypoints = keypoints_[view_index].size();
 
-    Grid grid(cell_size_, views_[view_index].GetImage().cols, views_[view_index].GetImage().rows);
+    Grid grid(cell_size_, (*views_)[view_index].GetImage().cols, (*views_)[view_index].GetImage().rows);
 
     // Put each keypoint in its cell. We will keep only keypoint indexes
     std::vector<std::vector<size_t>> keypoints_grid(grid.Size());
@@ -163,12 +163,12 @@ void Seed::FilterKeypoints()
 
 void Seed::ComputeDescriptors()
 {
-  descriptors_.resize(views_.size());
+  descriptors_.resize(views_->size());
 #pragma omp parallel for
-  for (size_t view_index = 0; view_index < views_.size(); ++view_index) {
+  for (size_t view_index = 0; view_index < views_->size(); ++view_index) {
     LOG(INFO) << "Computing descriptors for image index " << view_index;
 
-    cv::Mat &image = views_[view_index].GetImage();
+    cv::Mat &image = (*views_)[view_index].GetImage();
     std::vector<cv::KeyPoint> &keypoints = keypoints_[view_index];
     cv::Mat descriptors;
     switch (detector_type_) {
@@ -196,11 +196,11 @@ void Seed::DefaultPairsList()
   pairs_list_.clear();
 
   // Used to generate a combination of pairs (0-1, 0-2, 0-3, 1-2. 1-3...)
-  std::vector<bool> image_pairs(views_.size());
-  std::fill(image_pairs.begin(), image_pairs.end() - views_.size() + 2, true);
+  std::vector<bool> image_pairs(views_->size());
+  std::fill(image_pairs.begin(), image_pairs.end() - views_->size() + 2, true);
   do {
     std::vector<size_t> indices;
-    for (size_t i = 0; i < views_.size(); ++i) {
+    for (size_t i = 0; i < views_->size(); ++i) {
       if (image_pairs[i]) {
         indices.push_back(i);
       }
@@ -280,8 +280,8 @@ void Seed::DirectEpipolarMatching()
   for (size_t match_index = 0; match_index < pairs_list_.size(); ++match_index) {
     const ImagesPair pair = pairs_list_[match_index];
     FundamentalMatrix fundamental_matrix = Geometry::ComputeFundamentalMatrix(
-        views_[pair.first].GetProjectionMatrix(),
-        views_[pair.second].GetProjectionMatrix());
+        (*views_)[pair.first].GetProjectionMatrix(),
+        (*views_)[pair.second].GetProjectionMatrix());
 
     std::vector<cv::DMatch> matches;
     // For each keypoint in the left image
@@ -331,8 +331,8 @@ void Seed::FilterMatches()
   for (size_t match_index = 0; match_index < pairs_list_.size(); ++match_index) {
     const ImagesPair &pair = pairs_list_[match_index];
     FundamentalMatrix fundamental_matrix = Geometry::ComputeFundamentalMatrix(
-        views_[pair.first].GetProjectionMatrix(),
-        views_[pair.second].GetProjectionMatrix());
+        (*views_)[pair.first].GetProjectionMatrix(),
+        (*views_)[pair.second].GetProjectionMatrix());
     float distanceSum = 0;
 
     // Matches vector indexes are in sync with pairs_list
@@ -423,7 +423,7 @@ void Seed::GetAllMatches(KeypointImagePair &keypoint_index,
 
 void Seed::TriangulateMatches()
 {
-  for (size_t view_index = 0; view_index < views_.size(); ++view_index) {
+  for (size_t view_index = 0; view_index < views_->size(); ++view_index) {
     const std::vector<cv::KeyPoint> &keypoints = keypoints_[view_index];
 #pragma omp parallel for
     for (size_t keypoint_index = 0; keypoint_index < keypoints.size(); ++keypoint_index) {
@@ -438,13 +438,13 @@ void Seed::TriangulateMatches()
       if (keypoint_image_pairs.size() >= 1) {
         std::vector<ProjectionMatrix> projection_matrices;
         std::vector<Vector2> observations;
-        projection_matrices.push_back(views_[view_index].GetProjectionMatrix());
+        projection_matrices.push_back((*views_)[view_index].GetProjectionMatrix());
         cv::Point point = keypoints_[view_index][keypoint_index].pt;
         observations.push_back(Vector2(point.x, point.y));
         // Add the current view
         for (KeypointImagePair matched_keypoint_image_pair : keypoint_image_pairs) {
           const size_t matched_view_index = matched_keypoint_image_pair.first;
-          projection_matrices.push_back(views_[matched_view_index].GetProjectionMatrix());
+          projection_matrices.push_back((*views_)[matched_view_index].GetProjectionMatrix());
           point = keypoints_[matched_view_index][matched_keypoint_image_pair.second].pt;
           observations.push_back(Vector2(point.x, point.y));
         }
@@ -489,16 +489,16 @@ void Seed::CreatePatchesFromPoints()
     // Look for a reference image by distance to the camera center
     // to the optical center
     const Vector3 point = points_[point_index];
-    double min_distance = (point - views_[0].GetCameraCenter()).norm();
+    double min_distance = (point - (*views_)[0].GetCameraCenter()).norm();
     size_t min_index = 0;
-    for (size_t camera_index = 1; camera_index < views_.size(); ++camera_index) {
-      double distance = (point - views_[camera_index].GetCameraCenter()).norm();
+    for (size_t camera_index = 1; camera_index < views_->size(); ++camera_index) {
+      double distance = (point - (*views_)[camera_index].GetCameraCenter()).norm();
       if (distance < min_distance) {
         min_index = camera_index;
         min_distance = distance;
       }
     }
-    Vector3 patch_to_center = point - views_[min_index].GetCameraCenter();
+    Vector3 patch_to_center = point - (*views_)[min_index].GetCameraCenter();
     Vector3 normal = patch_to_center / patch_to_center.norm();
     // Init patch
     Patch patch;
@@ -659,8 +659,8 @@ void Seed::PrintPatches(const std::string folder_name)
 
     // Some process should verify images with boundaries outside of the image
     for (const size_t view_index : visible_images) {
-      const cv::Mat &image = views_[view_index].GetImage();
-      const Vector2 projected_point = views_[view_index].ProjectPoint(patch.GetPosition());
+      const cv::Mat &image = (*views_)[view_index].GetImage();
+      const Vector2 projected_point = (*views_)[view_index].ProjectPoint(patch.GetPosition());
       if (projected_point[0] > patch_radius && projected_point[0] < image.cols - patch_radius &&
           projected_point[1] > patch_radius && projected_point[1] < image.rows - patch_radius) {
         cv::imwrite(stlplus::create_filespec(output_folder, std::string("patch_") + std::to_string(patch_index) + "_v_" + std::to_string(view_index), "jpg"),

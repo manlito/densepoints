@@ -3,14 +3,15 @@
 #include "pmvs.h"
 #include "seed.h"
 
-using namespace DensePoints::PMVS;
+namespace DensePoints {
+namespace PMVS {
 
 void PMVS::AddCamera(View view)
 {
   view.Load();
 
   if (view.ImageLoaded()) {
-    views_.push_back(view);
+    views_->push_back(view);
   } else {
     LOG(WARNING) << "View with image " << view.GetImageFilename() << " discarded";
   }
@@ -19,13 +20,26 @@ void PMVS::AddCamera(View view)
 bool PMVS::Run()
 {
   InsertSeeds();
-
+  ExpandSeeds();
   return true;
 }
 
 void PMVS::InsertSeeds()
 {
-  std::vector<Vector3> seeds;
-  Seed seed(views_);
-  seed.GenerateSeeds(seeds);
+  seeds_ = std::make_shared<Seed>(views_);
+  seeds_->GenerateSeeds();
 }
+
+void PMVS::ExpandSeeds()
+{
+  std::vector<Patch> seeds;
+  seeds_->GetPatches(seeds);
+
+  expand_ = std::make_shared<Expand>(views_);
+  expand_->SetSeeds(seeds);
+}
+
+
+}
+}
+

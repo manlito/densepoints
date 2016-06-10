@@ -5,6 +5,8 @@
 #include <memory>
 #include "core/types.h"
 #include "options.h"
+#include "seed.h"
+#include "expand.h"
 #include "opencv2/core.hpp"
 
 namespace DensePoints {
@@ -19,12 +21,15 @@ namespace DensePoints {
     protected:
 
       void InsertSeeds();
-      void Expand();
-      void Filter();
+      void ExpandSeeds();
+      void FilterPatches();
 
       Options options_;
-      std::vector<View> views_;
+      Views views_;
       PointCloudXYZRGBNormal cloud_;
+
+      std::shared_ptr<Seed> seeds_;
+      std::shared_ptr<Expand> expand_;
     };
   }
 }

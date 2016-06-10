@@ -11,7 +11,7 @@ namespace DensePoints {
     class Optimization {
     public:
       Optimization(Patch &patch,
-                   std::vector<View> &views,
+                   Views views,
                    size_t cell_size,
                    double score_threshold = 0.6,
                    size_t minimum_visible_image = 3) :
@@ -38,7 +38,7 @@ namespace DensePoints {
     protected:
 
       Patch &patch_;
-      std::vector<View> &views_;
+      Views views_;
       size_t cell_size_;
       size_t minimum_visible_image_;
       double score_threshold_;

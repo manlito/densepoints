@@ -18,7 +18,7 @@ void Optimization::GetProjectedTextures(const Vector3 normal, const Vector3 posi
   // Unitary vectors should use corresponding roll and pitch
 
   // Get a vector in the same direction as the X direction of the image
-  const View &reference_view = views_[patch_.GetReferenceImage()];
+  const View &reference_view = (*views_)[patch_.GetReferenceImage()];
   Vector3 reference_view_x_axis = reference_view.GetXAxis();
   Vector3 reference_view_y_axis = normal.cross(reference_view_x_axis);
 
@@ -38,7 +38,7 @@ void Optimization::GetProjectedTextures(const Vector3 normal, const Vector3 posi
   {
     cv::Mat homography;
     cv::Rect2i roi;
-    bool valid_texture = patch_.ComputePatchToViewHomography(views_[view_index],
+    bool valid_texture = patch_.ComputePatchToViewHomography((*views_)[view_index],
                                                              cell_size_,
                                                              scale * reference_view_x_axis,
                                                              scale * reference_view_y_axis,
@@ -53,7 +53,7 @@ void Optimization::GetProjectedTextures(const Vector3 normal, const Vector3 posi
 
     // Warp the homography to extract the patch
     cv::Mat texture;
-    cv::Mat &image = views_[view_index].GetImage();
+    cv::Mat &image = (*views_)[view_index].GetImage();
     cv::warpPerspective(image(roi), texture, homography, cv::Size(cell_size_, cell_size_), cv::INTER_LINEAR, cv::BORDER_REPLICATE);
     textures.push_back(texture);
   }
@@ -68,10 +68,10 @@ void Optimization::ParametrizePatch(const Vector3 normal, const Vector3 position
                                     double &depth, double &roll, double &pitch)
 {
   // Depth is the length of the vector from patch to reference image center
-  depth = (position - views_[patch_.GetReferenceImage()].GetCameraCenter()).norm();
+  depth = (position - (*views_)[patch_.GetReferenceImage()].GetCameraCenter()).norm();
   // As for angles, we know the patch x-axis is aligned with image x-axis.
   // Let's build a rotatio matrix, then a rotation matrix to angle conversion
-  Vector3 x_axis = views_[patch_.GetReferenceImage()].GetXAxis().normalized();
+  Vector3 x_axis = (*views_)[patch_.GetReferenceImage()].GetXAxis().normalized();
   Vector3 y_axis = normal.cross(x_axis);
   Vector3 z_axis = x_axis.cross(y_axis);
 
@@ -82,7 +82,7 @@ void Optimization::ParametrizePatch(const Vector3 normal, const Vector3 position
 void Optimization::UnparametrizePatch(double depth, double roll, double pitch,
                                       Vector3 &normal, Vector3 &position)
 {
-  const Vector3 &camera_center = views_[patch_.GetReferenceImage()].GetCameraCenter();
+  const Vector3 &camera_center = (*views_)[patch_.GetReferenceImage()].GetCameraCenter();
   const Vector3 &current_position = patch_.GetPosition();
   position = camera_center + (1 + depth) * (current_position - camera_center);
   // This method assumes given angles are relative, so that we onlu

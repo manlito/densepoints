@@ -12,7 +12,7 @@ namespace DensePoints {
     enum class MatcherType { FLANN, kNN };
     class Seed {
     public:
-      Seed(std::vector<View> &views,
+      Seed(Views views,
            DetectorType detector_type = DetectorType::ORB,
            MatcherType matcher_type = MatcherType::kNN,
            bool epipolar_matching = false,
@@ -29,7 +29,8 @@ namespace DensePoints {
         max_keypoints_per_cell_(max_keypoints_per_cell),
         patch_size_(patch_size) {}
 
-      void GenerateSeeds(std::vector<Vector3> &seeds);
+      void GenerateSeeds();
+      void GetPatches(std::vector<Patch> &patches) { patches = patches_; }
     protected:
 
       void DetectKeypoints();
@@ -61,7 +62,7 @@ namespace DensePoints {
       void PrintPatches(const std::string folder_name);
       void PrintTextures(const std::string folder_name);
 
-      std::vector<View> &views_;
+      Views views_;
       std::vector<std::vector<cv::KeyPoint>> keypoints_;
       std::vector<cv::Mat> descriptors_;
       ImagesPairsList pairs_list_;
