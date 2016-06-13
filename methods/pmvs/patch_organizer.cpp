@@ -51,6 +51,13 @@ PatchCells PatchOrganizer::TryInsert(const Patch &patch)
       patch_cells[view_id] = std::pair<size_t, size_t>(row, col);
     }
   }
+  // Automatically tell the original patch where it will leave in the grid,
+  // and also add the patch to the vector
+  if (patch_cells.size() > 0) {
+    Patch new_patch = patch;
+    new_patch.SetPatchCells(patch_cells);
+    patches_.push_back(new_patch);
+  }
   return patch_cells;
 }
 
@@ -60,12 +67,7 @@ PatchCells PatchOrganizer::TryInsert(const Patch &patch)
 void PatchOrganizer::SetSeeds(const std::vector<Patch> &seeds)
 {
   for (const Patch &patch : seeds) {
-    const PatchCells &patch_cells = TryInsert(patch);
-    if (patch_cells.size() > 0) {
-      Patch new_patch = patch;
-      new_patch.SetPatchCells(patch_cells);
-      patches_.push_back(new_patch);
-    }
+    TryInsert(patch);
   }
 }
 

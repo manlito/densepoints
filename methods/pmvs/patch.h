@@ -97,6 +97,7 @@ private:
 };
 
 typedef std::vector<Patch> Patches;
+
 }
 }
 

@@ -2,7 +2,9 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 #include "expand.h"
+#include "optimization_opencv.h"
 #include "io/file_utils.h"
+#include "utils.h"
 #include "easylogging/easylogging.h"
 
 namespace DensePoints {
@@ -17,9 +19,14 @@ void Expand::SetSeeds(const Patches seeds)
 
 #ifdef DEBUG_PMVS_EXPANSION
   PrintPatchGrids("initial");
+  PrintCloud(patch_organizer_->GetPatches(), "points", "before_expansion");
 #endif
 
   ExpandPatches();
+
+#ifdef DEBUG_PMVS_EXPANSION
+  PrintCloud(patch_organizer_->GetPatches(), "points", "after_expansion");
+#endif
 
 }
 
@@ -46,8 +53,16 @@ void Expand::ExpandPatches()
         }
       }
       if (patch != nullptr) {
-        LOG(INFO) << "Expading patch with coordinates: " << patch->GetPosition().transpose();
-        ExpandPatch(patch);
+        // Only try to expand if has enough visible images
+        if (patch->GetTrullyVisibleImages().size() >= 2) {
+          LOG(INFO) << "Expading patch with coordinates: " << patch->GetPosition().transpose();
+          Patches patches = ExpandPatch(patch);
+          for (const Patch &patch : patches) {
+            patch_organizer_->TryInsert(patch);
+          }
+        } else {
+          LOG(INFO) << "Found patch with " << patch->GetTrullyVisibleImages().size() << " views";
+        }
       } else {
         // Exit as no more patches to expand are left
         break;
@@ -65,20 +80,29 @@ Patches Expand::ExpandPatch(Patch *const patch)
   double dx;
   patch->GetProjectedXYAxisAndScale(reference_view,x_axis, y_axis, dx);
 
-  double scale = 1 / dx;
+  double scale = patch_organizer_->GetOptions().grid_scale / dx;
 
   const std::vector<Vector3> expansion_directions {
     Vector3(1, 0, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(0, -1, 0)
   };
-
-  // Each direction to expand
-  for (const Vector3 direction : expansion_directions) {
-    Vector3 position = patch->GetPosition() + scale * direction;
-    LOG(INFO) << "Exp: " << position.transpose();
-  }
-
   // Project the center and the right axis
   Patches patches;
+
+  // Each direction to expand
+  LOG(INFO) << "P: " << reference_view.ProjectPoint(patch->GetPosition()).transpose();
+  for (const Vector3 direction : expansion_directions) {
+    Vector3 position = patch->GetPosition() + scale * direction;
+    Vector2 projected_point = reference_view.ProjectPoint(position);
+    LOG(INFO) << "Exp: " << projected_point.transpose();
+    Patch new_patch = *patch;
+    new_patch.SetPosition(position);
+
+    OptimizationOpenCV optimizer(new_patch, views_, options_.cell_size);
+    if (optimizer.Optimize()) {
+      patches.push_back(new_patch);
+    }
+  }
+
   return patches;
 }
 

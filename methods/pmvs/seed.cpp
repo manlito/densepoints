@@ -7,6 +7,7 @@
 #include "easylogging/easylogging.h"
 #include "seed.h"
 #include "optimization_opencv.h"
+#include "utils.h"
 #include "core/grid.h"
 #include "geometry/fundamental_matrix.h"
 #include "geometry/triangulation.h"
@@ -554,14 +555,14 @@ void Seed::OptimizeAndRefinePatches()
   FilterPatches();
 #ifdef DEBUG_PMVS_OPTIMIZATION
   PrintTextures("initial_filtered");
-  PrintCloud("points", "initial_filtered");
+  PrintCloud(patches_, "points", "initial_filtered");
 #endif
 
   // Patch optimization
   OptimizePatches();
 #ifdef DEBUG_PMVS_OPTIMIZATION
      PrintTextures("initial_optimized");
-     PrintCloud("points", "initial_optimized");
+     PrintCloud(patches_, "points", "initial_optimized");
 #endif
 
 }
@@ -613,39 +614,6 @@ void Seed::RemovePatches(const std::vector<size_t> &patch_indices)
     ++remove_offset;
   }
 }
-
-void Seed::PrintCloud(const std::string folder_name, const std::string file_name)
-{
-  // Debug patches
-  rplycpp::PLYWriter writer;
-  writer.Open(stlplus::create_filespec(IO::GetFolder({ DEBUG_OUTPUT_PATH, folder_name }),
-                                       file_name, "ply"));
-  std::vector<rplycpp::PLYProperty> properties;
-  rplycpp::PLYProperty property;
-  property.type = rplycpp::PLYDataType::PLY_FLOAT;
-  property.name = "x";
-  properties.push_back(property);
-  property.name = "y";
-  properties.push_back(property);
-  property.name = "z";
-  properties.push_back(property);
-  property.name = "nx";
-  properties.push_back(property);
-  property.name = "ny";
-  properties.push_back(property);
-  property.name = "nz";
-  properties.push_back(property);
-  writer.AddElement("vertex", properties, patches_.size());
-
-  // Add the data IN THE SAME ORDER!
-  for (const Patch &patch : patches_) {
-    const PointXYZRGBNormal point = patch.GetPoint();
-    writer.AddRow(std::vector<double> { point.x, point.y, point.z,
-                                        point.normal_x, point.normal_y, point.normal_z});
-  }
-  writer.Close();
-}
-
 
 void Seed::PrintPatches(const std::string folder_name)
 {

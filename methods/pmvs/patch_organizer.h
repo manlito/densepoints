@@ -63,6 +63,7 @@ public:
   size_t Size() const { return patch_set_.size(); }
   PatchGrid& At(size_t index) { return patch_set_[index]; }
   std::vector<Patch*> GetPatchesPointers();
+  Patches& GetPatches() { return patches_; }
 
   // Returns a map with positions for the inserted patch
   PatchCells TryInsert(const Patch &patch);

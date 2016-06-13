@@ -58,7 +58,6 @@ namespace DensePoints {
 
       // Utility functions
       void RemovePatches(const std::vector<size_t> &patch_indices);
-      void PrintCloud(const std::string folder_name, const std::string file_name);
       void PrintPatches(const std::string folder_name);
       void PrintTextures(const std::string folder_name);
 
