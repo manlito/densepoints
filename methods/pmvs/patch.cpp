@@ -37,6 +37,36 @@ void Patch::InitRelatedImages(const Views views,
   }
 }
 
+void Patch::GetProjectedXYAxisAndScale(const View &view,
+                                       Vector3 &x_axis, Vector3 &y_axis,
+                                       double &scale)
+{
+  GetProjectedXYAxisAndScale(view,
+                             GetNormal(), GetPosition(),
+                             x_axis, y_axis,
+                             scale);
+}
+
+void Patch::GetProjectedXYAxisAndScale(const View &view,
+                                       Vector3 normal, Vector3 position,
+                                       Vector3 &x_axis, Vector3 &y_axis,
+                                       double &scale)
+{
+  // Project unitary vectors using patch parameters into ref image
+  // Unitary vectors should use corresponding roll and pitch
+
+  // Get a vector in the same direction as the X direction of the image
+  x_axis = view.GetXAxis().normalized();
+  y_axis = normal.cross(x_axis);
+
+  // Take the largest size, as projected in the image
+  Vector2 projected_center, projected_x, projected_y;
+  projected_center = view.ProjectPoint(position);
+  projected_x = view.ProjectPoint(position + x_axis);
+
+  scale = (projected_x - projected_center).norm();
+}
+
 void Patch::RemoveTrullyVisibleImage(size_t index)
 {
   visible_images_.erase(visible_images_.begin() + index);

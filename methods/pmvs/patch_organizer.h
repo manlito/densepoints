@@ -9,14 +9,31 @@ namespace DensePoints {
 namespace PMVS {
 
 // Make sure you delete this points when removing patch
-typedef std::vector<Patch*> PatchGridCell;
+typedef std::vector<Patch const*> PatchGridCell;
 
 class PatchGrid {
 public:
   PatchGrid(size_t width, size_t height, size_t max_patches_per_cell);
   const PatchGridCell& GetAt(size_t row, size_t column) const;
   bool TryInsert(size_t row, size_t column, const Patch &patch);
+  size_t Width() const { return width_; }
+  size_t Height() const { return height_; }
+
+  // Iterators
+  PatchGridCell* begin() {
+    if (grid_.size() > 0)
+      return &grid_.front();
+    return nullptr;
+  }
+  PatchGridCell* end() {
+    if (grid_.size() > 0)
+      return &grid_.back();
+    return nullptr;
+  }
 private:
+  size_t width_;
+  size_t height_;
+  size_t max_patches_per_cell_;
   std::vector<PatchGridCell> grid_;
 };
 
@@ -37,12 +54,20 @@ public:
     : views_(views),
       options_(options) { }
   void AllocateViews();
+
+  PatchOrganizerOptions GetOptions() { return options_; }
   void SetOptions(const PatchOrganizerOptions options) {
     options_ = options;
   }
+  // Getters and setters
+  size_t Size() const { return patch_set_.size(); }
+  PatchGrid& At(size_t index) { return patch_set_[index]; }
+  std::vector<Patch*> GetPatchesPointers();
+
   // Returns a map with positions for the inserted patch
   PatchCells TryInsert(const Patch &patch);
   void SetSeeds(const std::vector<Patch> &seeds);
+
 protected:
   Views views_;
   PatchOrganizerOptions options_;

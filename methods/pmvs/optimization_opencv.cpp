@@ -66,10 +66,11 @@ bool OptimizationOpenCV::Optimize()
                      normal, position);
   patch_.SetNormal(normal);
   patch_.SetPosition(position);
+#ifdef DEBUG_PMVS_OPTIMIZATION
   LOG(INFO) << "Optimization END with: "
             << x.at<double>(0, 0) << ", "
             << x.at<double>(0, 1) << ", "
             << x.at<double>(0, 2);
-
+#endif
   return true;
 }

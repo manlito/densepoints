@@ -18,7 +18,10 @@ namespace DensePoints {
           options_(options) { }
       void SetOptions(const ExpandOptions expand_options);
       void SetSeeds(const Patches seeds);
-      void ExpandSeeds();
+      void ExpandPatches();
+      Patches ExpandPatch(Patch *const patch);
+      // Utility
+      void PrintPatchGrids(const std::__cxx11::string folder_name);
     protected:
       Views views_;
       ExpandOptions options_;

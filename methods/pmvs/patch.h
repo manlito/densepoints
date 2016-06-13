@@ -50,7 +50,7 @@ public:
   }
   Vector3 GetPosition() const {
     return Vector3(point_.x, point_.y, point_.z);
-  }
+  } 
   void InitRelatedImages(const Views views,
                          double trully_visible_threshold = 0.78, // Pi/4
                          double potentially_visible_threshold = 1.04); // Pi/3
@@ -60,7 +60,20 @@ public:
   const ImagesIndices& GetPotentiallyVisibleImages() const {
     return candidate_images_;
   }
+  void GetProjectedXYAxisAndScale(const View &view,
+                                  Vector3 &x_axis, Vector3 &y_axis,
+                                  double &scale);
+  void GetProjectedXYAxisAndScale(const View &view,
+                                  Vector3 normal, Vector3 position,
+                                  Vector3 &x_axis, Vector3 &y_axis,
+                                  double &scale);
   void RemoveTrullyVisibleImage(size_t index);
+
+  // Sets the map that indicates where this patch is
+  // using a spot in the patch organizer
+  void SetPatchCells(const PatchCells &patch_cells) {
+    patch_cells_ = patch_cells;
+  }
 
   // Patch projection and textures
   float ComputeScore(Patch &patch);
@@ -81,7 +94,6 @@ private:
   // A quick accesor to the cells in the patch organizer
   // where this patch is available. Used during expansion
   PatchCells patch_cells_;
-
 };
 
 typedef std::vector<Patch> Patches;

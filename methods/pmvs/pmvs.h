@@ -13,7 +13,9 @@ namespace DensePoints {
   namespace PMVS {
     class PMVS {
     public:
-      PMVS(const Options &options = Options()) : options_(options) {}
+      PMVS(const Options &options = Options()) : options_(options) {
+        views_ = std::make_shared<std::vector<View>>();
+      }
       void AddCamera(View view);
       bool Run();
       std::shared_ptr<PointCloudXYZRGBNormal> GetPointCloud();

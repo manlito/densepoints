@@ -10,6 +10,7 @@ option(DENSEPOINTS_USE_OPENMP "Enable OpenMP for multicore usage" ON)
 option(DENSEPOINTS_BUILD_TESTS "Build tests" ON)
 option(DENSEPOINTS_DEBUG_PMVS_SEEDS "Print images for visualization on PMVS::Seed" OFF)
 option(DENSEPOINTS_DEBUG_PMVS_OPTIMIZATION "Print patches for visualization on PMVS::Optimization" OFF)
+option(DENSEPOINTS_DEBUG_PMVS_EXPANSION "Print data for debugging on PMVS::Expand" OFF)
 set(DENSEPOINTS_DEBUG_OUTPUT_PATH "${CMAKE_CURRENT_BINARY_DIR}/debug_data" CACHE STRING "Folder where debug results will be put")
 file(MAKE_DIRECTORY ${DENSEPOINTS_DEBUG_OUTPUT_PATH})
 
@@ -48,6 +49,10 @@ endif()
 if(DENSEPOINTS_DEBUG_PMVS_OPTIMIZATION)
   message(STATUS "DEBUG: PMVS::Optimization enabled")
   set(DENSEPOINTS_DEFINITIONS ${DENSEPOINTS_DEFINITIONS} -DDEBUG_PMVS_OPTIMIZATION)
+endif()
+if(DENSEPOINTS_DEBUG_PMVS_EXPANSION)
+  message(STATUS "DEBUG: PMVS::Expansion enabled")
+  set(DENSEPOINTS_DEFINITIONS ${DENSEPOINTS_DEFINITIONS} -DDEBUG_PMVS_EXPANSION)
 endif()
 # DensePoints: Libraries
 set(DENSEPOINTS_LIBS

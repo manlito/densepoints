@@ -19,15 +19,11 @@ void Optimization::GetProjectedTextures(const Vector3 normal, const Vector3 posi
 
   // Get a vector in the same direction as the X direction of the image
   const View &reference_view = (*views_)[patch_.GetReferenceImage()];
-  Vector3 reference_view_x_axis = reference_view.GetXAxis();
-  Vector3 reference_view_y_axis = normal.cross(reference_view_x_axis);
-
-  // Take the largest size, as projected in the image
-  Vector2 projected_center, projected_x, projected_y;
-  projected_center = reference_view.ProjectPoint(position);
-  projected_x = reference_view.ProjectPoint(position + reference_view_x_axis);
-  double dx = (projected_x - projected_center).norm();
-
+  Vector3 reference_view_x_axis, reference_view_y_axis;
+  double dx;
+  patch_.GetProjectedXYAxisAndScale(reference_view, normal, position,
+                                    reference_view_x_axis, reference_view_y_axis,
+                                    dx);
   LOG_IF(dx == 0, FATAL) << "Projection of unitary vector on x-axis retuned 0 length vector";
 
   // Compute a scale, using projection on image x-axis

@@ -77,7 +77,7 @@ void Seed::DetectKeypoints()
 
 #ifdef DEBUG_PMVS_SEEDS
     cv::Mat grayscale_image;
-    cv::cvtColor(views_[view_index].GetImage(), grayscale_image, cv::COLOR_BGR2GRAY);
+    cv::cvtColor((*views_)[view_index].GetImage(), grayscale_image, cv::COLOR_BGR2GRAY);
     cv::drawKeypoints(image, keypoints, image);
     LOG(INFO) << "Path: " << stlplus::create_filespec(stlplus::folder_append_separator(DEBUG_OUTPUT_PATH) + "keypoints",
                                                       std::string("kp_") + std::to_string(view_index), "jpg");
@@ -147,7 +147,7 @@ void Seed::FilterKeypoints()
 
 #ifdef DEBUG_PMVS_SEEDS
     cv::Mat grayscale_image;
-    cv::cvtColor(views_[view_index].GetImage(), grayscale_image, cv::COLOR_BGR2GRAY);
+    cv::cvtColor((*views_)[view_index].GetImage(), grayscale_image, cv::COLOR_BGR2GRAY);
     cv::drawKeypoints(grayscale_image, keypoints, grayscale_image);
     cv::imwrite(std::string("kp_") + std::to_string(view_index) + std::string("_f.jpg"), grayscale_image);
     LOG(INFO) << "Best " << best_keypoints.size() << " keypoints for image index " << view_index;
@@ -256,8 +256,8 @@ void Seed::MatchKeypoints()
     cv::Mat grayscale_image_1;
     cv::Mat grayscale_image_2;
     cv::Mat output_image;
-    cv::cvtColor(views_[pair.first].GetImage(), grayscale_image_1, cv::COLOR_BGR2GRAY);
-    cv::cvtColor(views_[pair.second].GetImage(), grayscale_image_2, cv::COLOR_BGR2GRAY);
+    cv::cvtColor((*views_)[pair.first].GetImage(), grayscale_image_1, cv::COLOR_BGR2GRAY);
+    cv::cvtColor((*views_)[pair.second].GetImage(), grayscale_image_2, cv::COLOR_BGR2GRAY);
     cv::drawMatches(grayscale_image_1, keypoints_[pair.first],
         grayscale_image_2, keypoints_[pair.second],
         matches, output_image);
@@ -308,8 +308,8 @@ void Seed::DirectEpipolarMatching()
     cv::Mat grayscale_image_1;
     cv::Mat grayscale_image_2;
     cv::Mat output_image;
-    cv::cvtColor(views_[pair.first].GetImage(), grayscale_image_1, cv::COLOR_BGR2GRAY);
-    cv::cvtColor(views_[pair.second].GetImage(), grayscale_image_2, cv::COLOR_BGR2GRAY);
+    cv::cvtColor((*views_)[pair.first].GetImage(), grayscale_image_1, cv::COLOR_BGR2GRAY);
+    cv::cvtColor((*views_)[pair.second].GetImage(), grayscale_image_2, cv::COLOR_BGR2GRAY);
     cv::drawMatches(grayscale_image_1, keypoints_[pair.first],
         grayscale_image_2, keypoints_[pair.second],
         matches, output_image);
@@ -363,8 +363,8 @@ void Seed::FilterMatches()
     cv::Mat grayscale_image_1;
     cv::Mat grayscale_image_2;
     cv::Mat output_image;
-    cv::cvtColor(views_[pair.first].GetImage(), grayscale_image_1, cv::COLOR_BGR2GRAY);
-    cv::cvtColor(views_[pair.second].GetImage(), grayscale_image_2, cv::COLOR_BGR2GRAY);
+    cv::cvtColor((*views_)[pair.first].GetImage(), grayscale_image_1, cv::COLOR_BGR2GRAY);
+    cv::cvtColor((*views_)[pair.second].GetImage(), grayscale_image_2, cv::COLOR_BGR2GRAY);
     cv::drawMatches(grayscale_image_1, keypoints_[pair.first],
         grayscale_image_2, keypoints_[pair.second],
         matches, output_image);

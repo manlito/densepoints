@@ -39,7 +39,7 @@ namespace DensePoints {
     View(const ProjectionMatrix &projection_matrix) { SetProjectionMatrix(projection_matrix); }
     View(std::string image_filename) :
       image_filename_(image_filename),
-      image_loaded_(false) {}
+      image_loaded_(false) { }
 
     cv::Mat& GetImage();
     bool ImageLoaded() const { return image_loaded_; }
