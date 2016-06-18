@@ -53,10 +53,12 @@ bool OptimizationOpenCV::Optimize()
 
   cv::Mat x = (cv::Mat_<double>(1, 3) << depth, roll, pitch);
   // TODO: This initial step is really sensitive... need an alternative
-  cv::Mat initial_step = (cv::Mat_<double>(3, 1)<< 0.0005, 0.01, 0.01);
+  cv::Mat initial_step = (cv::Mat_<double>(3, 1)<< 0.0006, 0.08, 0.08);
 
   solver->setFunction(functor);
   solver->setInitStep(initial_step);
+  cv::TermCriteria term_criteria(cv::TermCriteria::MAX_ITER + cv::TermCriteria::EPS, 50, 0.01);
+  solver->setTermCriteria(term_criteria);
 
   double res = solver->minimize(x);
 

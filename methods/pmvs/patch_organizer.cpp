@@ -17,14 +17,14 @@ bool PatchGrid::TryInsert(size_t row, size_t column, const Patch &patch)
   // Check if it is inside bounds
   if (column >= 0 && column < width_ && row >= 0 && row < height_) {
     // Check if there is space
-    PatchGridCell &patch_grid_cell = grid_[row * height_ + column];
+    PatchGridCell &patch_grid_cell = grid_[row * width_ + column];
     if (patch_grid_cell.size() < max_patches_per_cell_) {
       // Insert a pointer to the patch
       patch_grid_cell.push_back(&patch);
       return true;
     }
   } else {
-    LOG(INFO) << "Rejecting patch out-of-bounds at " << row << ", " << column;
+    //LOG(INFO) << "Rejecting patch out-of-bounds at " << row << ", " << column;
   }
   return false;
 }
@@ -39,26 +39,28 @@ void PatchOrganizer::AllocateViews()
   }
 }
 
-PatchCells PatchOrganizer::TryInsert(const Patch &patch)
+Patch* PatchOrganizer::TryInsert(const Patch &patch)
 {
+  Patch new_patch = patch;
+
   PatchCells patch_cells;
-  for (const auto view_id : patch.GetTrullyVisibleImages()) {
-    Vector2 point = (*views_)[view_id].ProjectPoint(patch.GetPosition());
+  for (const auto view_id : new_patch.GetTrullyVisibleImages()) {
+    Vector2 point = (*views_)[view_id].ProjectPoint(new_patch.GetPosition());
     size_t row = static_cast<size_t>(point[1] / options_.grid_scale);
     size_t col = static_cast<size_t>(point[0] / options_.grid_scale);
 
-    if (patch_set_[view_id].TryInsert(row, col, patch)) {
+    if (patch_set_[view_id].TryInsert(row, col, new_patch)) {
       patch_cells[view_id] = std::pair<size_t, size_t>(row, col);
     }
   }
   // Automatically tell the original patch where it will leave in the grid,
   // and also add the patch to the vector
   if (patch_cells.size() > 0) {
-    Patch new_patch = patch;
     new_patch.SetPatchCells(patch_cells);
     patches_.push_back(new_patch);
+    return &patches_.back();
   }
-  return patch_cells;
+  return nullptr;
 }
 
 // Make sure both patches and and the PatchCells are in sync, that is,

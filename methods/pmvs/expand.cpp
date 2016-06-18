@@ -32,41 +32,69 @@ void Expand::SetSeeds(const Patches seeds)
 
 void Expand::ExpandPatches()
 {
+//  // Comparison function
+//  auto compare_patches = [](Patch* left, Patch* right) {
+//    return left->GetTrullyVisibleImages().size() < right->GetTrullyVisibleImages().size();
+//  };
+//  // Create a list of patches that need expansion
+//  std::priority_queue<Patch*, std::vector<Patch*>, decltype(compare_patches)>
+//      patches_to_expand(compare_patches, patch_organizer_->GetPatchesPointers());
   // Comparison function
-  auto compare_patches = [](Patch* left, Patch* right) {
-    return left->GetTrullyVisibleImages().size() < right->GetTrullyVisibleImages().size();
-  };
   // Create a list of patches that need expansion
-  std::priority_queue<Patch*, std::vector<Patch*>, decltype(compare_patches)>
-      patches_to_expand(compare_patches, patch_organizer_->GetPatchesPointers());
+  std::queue<Patch*> patches_to_expand;
+  for (const auto patch_pointer : patch_organizer_->GetPatchesPointers()) {
+    patches_to_expand.push(patch_pointer);
+  }
+//  patches_to_expand.push( patch_organizer_->GetPatchesPointers()[0] );
 
-  // A omp parallel will go here
+  size_t patch_count = 0;
+#pragma omp parallel
   {
     while (true)
     {
       Patch* patch = nullptr;
-      // Critical here
+
+#pragma omp critical
       {
+        // Grab a patch
         if (patches_to_expand.size() > 0) {
-          patch = patches_to_expand.top();
+          patch = patches_to_expand.front();
           patches_to_expand.pop();
         }
       }
+
       if (patch != nullptr) {
         // Only try to expand if has enough visible images
         if (patch->GetTrullyVisibleImages().size() >= 2) {
-          LOG(INFO) << "Expading patch with coordinates: " << patch->GetPosition().transpose();
           Patches patches = ExpandPatch(patch);
-          for (const Patch &patch : patches) {
-            patch_organizer_->TryInsert(patch);
+          for (const Patch &new_patch : patches) {
+#pragma omp critical
+            {
+              Patch *inserted_patch = patch_organizer_->TryInsert(new_patch);
+              if (inserted_patch != nullptr) {
+                patches_to_expand.push(inserted_patch);
+              }
+            }
           }
         } else {
-          LOG(INFO) << "Found patch with " << patch->GetTrullyVisibleImages().size() << " views";
+          //LOG(INFO) << "Found patch " << patch->GetPosition().transpose() <<" with " << patch->GetTrullyVisibleImages().size() << " views";
         }
       } else {
         // Exit as no more patches to expand are left
         break;
       }
+
+#pragma omp critical
+      {
+        patch_count++;
+        if (patch_count % 1000 == 0) {
+          LOG(INFO) << patch_count << " patches so far";
+        }
+      }
+      if (patch_count >= 5e5) {
+        break;
+      }
+
     }
   }
 }
@@ -78,28 +106,35 @@ Patches Expand::ExpandPatch(Patch *const patch)
 
   Vector3 x_axis, y_axis;
   double dx;
-  patch->GetProjectedXYAxisAndScale(reference_view,x_axis, y_axis, dx);
+  patch->GetProjectedXYAxisAndScale(reference_view, x_axis, y_axis, dx);
 
   double scale = patch_organizer_->GetOptions().grid_scale / dx;
 
   const std::vector<Vector3> expansion_directions {
-    Vector3(1, 0, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(0, -1, 0)
+    x_axis, -x_axis, y_axis, -y_axis
   };
   // Project the center and the right axis
   Patches patches;
 
   // Each direction to expand
-  LOG(INFO) << "P: " << reference_view.ProjectPoint(patch->GetPosition()).transpose();
+  // LOG(INFO) << "P: " << reference_view.ProjectPoint(patch->GetPosition()).transpose();
   for (const Vector3 direction : expansion_directions) {
     Vector3 position = patch->GetPosition() + scale * direction;
     Vector2 projected_point = reference_view.ProjectPoint(position);
-    LOG(INFO) << "Exp: " << projected_point.transpose();
+    // LOG(INFO) << "Exp: " << position.transpose();
     Patch new_patch = *patch;
     new_patch.SetPosition(position);
 
     OptimizationOpenCV optimizer(new_patch, views_, options_.cell_size);
     if (optimizer.Optimize()) {
-      patches.push_back(new_patch);
+      // Recompute visible images
+      new_patch.InitRelatedImages(views_);
+      if (optimizer.FilterByErrorMeasurement()) {
+        // Accept if they exceed the threhold
+        patches.push_back(new_patch);
+      }
+    } else {
+      LOG(INFO) << "Failed expansion";
     }
   }
 

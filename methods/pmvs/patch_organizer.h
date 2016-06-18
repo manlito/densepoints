@@ -52,7 +52,7 @@ public:
   PatchOrganizer(Views views,
                  PatchOrganizerOptions options = PatchOrganizerOptions())
     : views_(views),
-      options_(options) { }
+      options_(options) { patches_.reserve(1e6); }
   void AllocateViews();
 
   PatchOrganizerOptions GetOptions() { return options_; }
@@ -66,7 +66,7 @@ public:
   Patches& GetPatches() { return patches_; }
 
   // Returns a map with positions for the inserted patch
-  PatchCells TryInsert(const Patch &patch);
+  Patch* TryInsert(const Patch &patch);
   void SetSeeds(const std::vector<Patch> &seeds);
 
 protected:
