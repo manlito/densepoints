@@ -57,6 +57,7 @@ Patch* PatchOrganizer::TryInsert(const Patch &patch)
   // and also add the patch to the vector
   if (patch_cells.size() > 0) {
     new_patch.SetPatchCells(patch_cells);
+    new_patch.ComputeColor(views_);
     patches_.push_back(new_patch);
     return &patches_.back();
   }

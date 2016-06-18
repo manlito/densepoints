@@ -23,6 +23,14 @@ void PMVS::PrintCloud(const Patches patches,
   properties.push_back(property);
   property.name = "z";
   properties.push_back(property);
+  property.type = rplycpp::PLYDataType::PLY_UCHAR;
+  property.name = "r";
+  properties.push_back(property);
+  property.name = "g";
+  properties.push_back(property);
+  property.name = "b";
+  properties.push_back(property);
+  property.type = rplycpp::PLYDataType::PLY_FLOAT;
   property.name = "nx";
   properties.push_back(property);
   property.name = "ny";
@@ -35,6 +43,7 @@ void PMVS::PrintCloud(const Patches patches,
   for (const Patch &patch : patches) {
     const PointXYZRGBNormal point = patch.GetPoint();
     writer.AddRow(std::vector<double> { point.x, point.y, point.z,
+                                        point.r, point.g, point.b,
                                         point.normal_x, point.normal_y, point.normal_z});
   }
   writer.Close();

@@ -28,7 +28,7 @@ void Seed::GenerateSeeds()
   // Compute matches with a default pair list
   DefaultPairsList();
 
-  if (!epipolar_matching_) {
+  if (!options_.epipolar_matching) {
     // Compute descriptors
     ComputeDescriptors();
     // Match with Flann or Bruteforce
@@ -62,7 +62,7 @@ void Seed::DetectKeypoints()
     (*views_)[view_index].GetImage().copyTo(image);
     std::vector<cv::KeyPoint> keypoints;
 
-    switch (detector_type_) {
+    switch (options_.detector_type) {
       case DetectorType::AKAZE: {
           cv::Ptr<cv::Feature2D> akaze = cv::AKAZE::create();
           akaze->detect(image, keypoints);
@@ -102,7 +102,7 @@ void Seed::FilterKeypoints()
   for (size_t view_index = 0; view_index < views_->size(); ++view_index) {
     const size_t initial_keypoints = keypoints_[view_index].size();
 
-    Grid grid(cell_size_, (*views_)[view_index].GetImage().cols, (*views_)[view_index].GetImage().rows);
+    Grid grid(options_.cell_size, (*views_)[view_index].GetImage().cols, (*views_)[view_index].GetImage().rows);
 
     // Put each keypoint in its cell. We will keep only keypoint indexes
     std::vector<std::vector<size_t>> keypoints_grid(grid.Size());
@@ -123,12 +123,12 @@ void Seed::FilterKeypoints()
         responses.push_back(keypoints_[view_index][keypoint_index].response);
       }
       if (responses.size() > 0) {
-        size_t sort_up_to = std::min(responses.size(), max_keypoints_per_cell_);
+        size_t sort_up_to = std::min(responses.size(), options_.max_keypoints_per_cell);
 
         // Get a list of top 4 responses, using the response index
         std::vector<size_t> indices(responses.size());
         for (size_t i = 0; i != indices.size(); ++i) indices[i] = i;
-        if (responses.size() > max_keypoints_per_cell_) {
+        if (responses.size() > options_.max_keypoints_per_cell) {
           std::nth_element(indices.begin(),
                            indices.begin() + sort_up_to,
                            indices.end(),
@@ -172,7 +172,7 @@ void Seed::ComputeDescriptors()
     cv::Mat &image = (*views_)[view_index].GetImage();
     std::vector<cv::KeyPoint> &keypoints = keypoints_[view_index];
     cv::Mat descriptors;
-    switch (detector_type_) {
+    switch (options_.detector_type) {
       case DetectorType::AKAZE: {
           cv::Ptr<cv::Feature2D> akaze = cv::AKAZE::create();
           akaze->compute(image, keypoints, descriptors);
@@ -221,7 +221,7 @@ void Seed::MatchKeypoints()
     const ImagesPair pair = pairs_list_[match_index];
 
     std::vector<cv::DMatch> matches;
-    switch (matcher_type_) {
+    switch (options_.matcher_type) {
       case MatcherType::kNN: {
           cv::Ptr<cv::DescriptorMatcher> matcher = cv::DescriptorMatcher::create("BruteForce-Hamming");
           const float nn_match_ratio = 0.7;
@@ -295,7 +295,7 @@ void Seed::DirectEpipolarMatching()
         const Vector2 point_right(keypoint_right.pt.x, keypoint_right.pt.y);
         Geometry::Line2D line = Geometry::LineFromFundamentalMatrix(fundamental_matrix, point_left);
         float distance = line.distance(point_right);
-        if (distance <= max_epipolar_distance_) {
+        if (distance <= options_.max_epipolar_distance) {
           matches.push_back(cv::DMatch(queryIdx, trainIdx, distance));
         }
         ++trainIdx;
@@ -350,7 +350,7 @@ void Seed::FilterMatches()
       Geometry::Line2D line = Geometry::LineFromFundamentalMatrix(fundamental_matrix, p1);
       float distance = line.distance(p2);
 
-      if (distance > max_epipolar_distance_) {
+      if (distance > options_.max_epipolar_distance) {
         it = matches.erase(it);
       } else {
         distanceSum += distance;
@@ -574,7 +574,7 @@ void Seed::FilterPatches()
   {
     for (size_t patch_index = 0; patch_index < patches_.size(); ++patch_index) {
       Patch &patch = patches_[patch_index];
-      OptimizationOpenCV optimizer(patch, views_, cell_size_);
+      OptimizationOpenCV optimizer(patch, views_, options_.cell_size);
       if (!optimizer.FilterByErrorMeasurement()) {
         // Mark the patch for removal
         patches_to_remove.push_back(patch_index);
@@ -592,7 +592,7 @@ void Seed::OptimizePatches()
   // Optimize patches
   for (size_t patch_index = 0; patch_index < patches_.size(); ++patch_index) {
     Patch &patch = patches_[patch_index];
-    OptimizationOpenCV optimizer(patch, views_, cell_size_);
+    OptimizationOpenCV optimizer(patch, views_, options_.cell_size);
     if (!optimizer.Optimize()) {
       // Mark the patch for removal
       patches_to_remove.push_back(patch_index);
@@ -618,7 +618,7 @@ void Seed::RemovePatches(const std::vector<size_t> &patch_indices)
 void Seed::PrintPatches(const std::string folder_name)
 {
   const std::string output_folder = IO::GetFolder({ DEBUG_OUTPUT_PATH, "patches", "seeds", folder_name});
-  const size_t patch_radius = patch_size_ / 2;
+  const size_t patch_radius = options_.patch_size / 2;
   for (size_t patch_index = 0; patch_index < patches_.size(); ++patch_index) {
     // For each patch, get its related images
     Patch &patch = patches_[patch_index];
@@ -632,7 +632,7 @@ void Seed::PrintPatches(const std::string folder_name)
       if (projected_point[0] > patch_radius && projected_point[0] < image.cols - patch_radius &&
           projected_point[1] > patch_radius && projected_point[1] < image.rows - patch_radius) {
         cv::imwrite(stlplus::create_filespec(output_folder, std::string("patch_") + std::to_string(patch_index) + "_v_" + std::to_string(view_index), "jpg"),
-                    image(cv::Rect(projected_point[0] - patch_radius, projected_point[1] - patch_radius, patch_size_, patch_size_)));
+                    image(cv::Rect(projected_point[0] - patch_radius, projected_point[1] - patch_radius, options_.patch_size, options_.patch_size)));
       }
 
     }
@@ -645,13 +645,13 @@ void Seed::PrintTextures(const std::string folder_name)
   if (!stlplus::folder_exists(output_folder)) {
     stlplus::folder_create(output_folder);
   }
-  const size_t patch_radius = patch_size_ / 2;
+  const size_t patch_radius = options_.patch_size / 2;
   for (size_t patch_index = 0; patch_index < patches_.size(); ++patch_index) {
     Patch &patch = patches_[patch_index];
 
     // Texture grabbing is part of optimization class...
     // perhaps moving to separte class?
-    OptimizationOpenCV optimizer(patch, views_, cell_size_);
+    OptimizationOpenCV optimizer(patch, views_, options_.cell_size);
 
     // Debug texture grabbing
     std::vector<cv::Mat> textures;

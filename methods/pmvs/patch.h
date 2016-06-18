@@ -60,6 +60,9 @@ public:
   const ImagesIndices& GetPotentiallyVisibleImages() const {
     return candidate_images_;
   }
+  // Should be called after changing the array of trully visible images
+  void ComputeColor(const Views views);
+
   void GetProjectedXYAxisAndScale(const View &view,
                                   Vector3 &x_axis, Vector3 &y_axis,
                                   double &scale);

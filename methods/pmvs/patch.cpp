@@ -1,5 +1,6 @@
 #include "patch.h"
 #include <math.h>
+#include <numeric>
 #include <opencv2/calib3d.hpp>
 
 using namespace DensePoints;
@@ -36,6 +37,31 @@ void Patch::InitRelatedImages(const Views views,
     }
   }
 }
+
+void Patch::ComputeColor(const Views views)
+{
+  const Vector3 position = GetPosition();
+  std::vector<Vector3> colors;
+  for (size_t view_index = 0; view_index < views->size(); ++view_index) {
+    const View &view = (*views)[view_index];
+    // Check the point is actually inside the other image
+    if (!view.IsPointInside(position)) {
+      continue;
+    }
+
+    Vector2 point = view.ProjectPoint(position);
+    const cv::Mat &image = (*views)[view_index].GetImage();
+    const cv::Vec3b &pixel = image.at<cv::Vec3b>(static_cast<int>(point[1]),
+        static_cast<int>(point[0]));
+    colors.push_back(Vector3(pixel[0], pixel[1], pixel[2]));
+  }
+  Vector3 color_sum = std::accumulate(colors.begin(), colors.end(), Vector3(0, 0, 0));
+  color_sum /= colors.size();
+  point_.r = static_cast<unsigned char>(color_sum[2]);
+  point_.g = static_cast<unsigned char>(color_sum[1]);
+  point_.b = static_cast<unsigned char>(color_sum[0]);
+}
+
 
 void Patch::GetProjectedXYAxisAndScale(const View &view,
                                        Vector3 &x_axis, Vector3 &y_axis,

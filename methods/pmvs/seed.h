@@ -10,24 +10,37 @@ namespace DensePoints {
     typedef std::pair<size_t, size_t> KeypointImagePair;
     enum class DetectorType { AKAZE, ORB };
     enum class MatcherType { FLANN, kNN };
+
+    struct SeedOptions {
+      DetectorType detector_type;
+      MatcherType matcher_type;
+      bool epipolar_matching;
+      float max_epipolar_distance;
+      size_t cell_size;
+      size_t max_keypoints_per_cell;
+      size_t patch_size;
+      SeedOptions(DetectorType detector_type = DetectorType::ORB,
+                  MatcherType matcher_type = MatcherType::kNN,
+                  bool epipolar_matching = false,
+                  float max_epipolar_distance = 1.5,
+                  size_t cell_size = 32,
+                  size_t max_keypoints_per_cell = 4,
+                  size_t patch_size = 21) :
+               detector_type(detector_type),
+               matcher_type(matcher_type),
+               epipolar_matching(epipolar_matching),
+               max_epipolar_distance(max_epipolar_distance),
+               cell_size(cell_size),
+               max_keypoints_per_cell(max_keypoints_per_cell),
+               patch_size(patch_size) {}
+    };
+
     class Seed {
     public:
       Seed(Views views,
-           DetectorType detector_type = DetectorType::ORB,
-           MatcherType matcher_type = MatcherType::kNN,
-           bool epipolar_matching = false,
-           float max_epipolar_distance = 1.5,
-           size_t cell_size = 32,
-           size_t max_keypoints_per_cell = 4,
-           size_t patch_size = 21) :
+           SeedOptions options = SeedOptions()) :
         views_(views),
-        detector_type_(detector_type),
-        matcher_type_(matcher_type),
-        epipolar_matching_(epipolar_matching),
-        max_epipolar_distance_(max_epipolar_distance),
-        cell_size_(cell_size),
-        max_keypoints_per_cell_(max_keypoints_per_cell),
-        patch_size_(patch_size) {}
+        options_(options) {}
 
       void GenerateSeeds();
       void GetPatches(std::vector<Patch> &patches) { patches = patches_; }
@@ -69,13 +82,7 @@ namespace DensePoints {
       std::vector<Vector3> points_;
       std::vector<Patch> patches_;
 
-      DetectorType detector_type_;
-      MatcherType matcher_type_;
-      float max_epipolar_distance_;
-      bool epipolar_matching_;
-      size_t cell_size_;
-      size_t max_keypoints_per_cell_;
-      size_t patch_size_;
+      SeedOptions options_;
     };
 
   }

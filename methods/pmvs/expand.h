@@ -9,7 +9,7 @@ namespace DensePoints {
   namespace PMVS {
     struct ExpandOptions {
       size_t cell_size;
-      ExpandOptions(size_t cell_size = 32)
+      ExpandOptions(size_t cell_size = 15)
         : cell_size(cell_size) { }
     };
 
@@ -24,7 +24,7 @@ namespace DensePoints {
       void ExpandPatches();
       Patches ExpandPatch(Patch *const patch);
       // Utility
-      void PrintPatchGrids(const std::__cxx11::string folder_name);
+      void PrintPatchGrids(const std::string folder_name);
     protected:
       Views views_;
       ExpandOptions options_;
