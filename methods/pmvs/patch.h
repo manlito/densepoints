@@ -50,7 +50,8 @@ public:
   }
   Vector3 GetPosition() const {
     return Vector3(point_.x, point_.y, point_.z);
-  } 
+  }
+  void ComputeReferenceImage(const Views views);
   void InitRelatedImages(const Views views,
                          double trully_visible_threshold = 0.78, // Pi/4
                          double potentially_visible_threshold = 1.04); // Pi/3

@@ -6,6 +6,16 @@
 using namespace DensePoints;
 using namespace DensePoints::PMVS;
 
+void Patch::ComputeReferenceImage(const Views views)
+{
+  const Vector3 normal = GetNormal();
+  std::vector<double> dot_products;
+  for (const size_t view_id : GetTrullyVisibleImages()) {
+    const Vector3 patch_to_view = GetPosition() - (*views)[view_id].GetCameraCenter();
+    dot_products.push_back(normal.dot(patch_to_view));
+  }
+}
+
 void Patch::InitRelatedImages(const Views views,
                               double trully_visible_threshold,
                               double potentially_visible_threshold)

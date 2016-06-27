@@ -4,6 +4,8 @@
 #include "seed.h"
 
 namespace DensePoints {
+
+using namespace Features;
 namespace PMVS {
 
 void PMVS::AddCamera(View view)
@@ -28,6 +30,7 @@ void PMVS::InsertSeeds()
 {
   seeds_ = std::make_shared<Seed>(views_);
   seeds_->GenerateSeeds();
+  seeds_->ConvertSeedsToPatches();
 }
 
 void PMVS::ExpandSeeds()

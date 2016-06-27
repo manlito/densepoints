@@ -55,7 +55,7 @@ Patch* PatchOrganizer::TryInsert(const Patch &patch)
   }
   // Automatically tell the original patch where it will leave in the grid,
   // and also add the patch to the vector
-  if (patch_cells.size() > 0) {
+  if (patch_cells.size() > 1) {
     new_patch.SetPatchCells(patch_cells);
     new_patch.ComputeColor(views_);
     patches_.push_back(new_patch);

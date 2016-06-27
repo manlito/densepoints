@@ -56,6 +56,7 @@ if(DENSEPOINTS_DEBUG_PMVS_EXPANSION)
 endif()
 # DensePoints: Libraries
 set(DENSEPOINTS_LIBS
+    densepoints_features
     densepoints_io
     densepoints_geometry
     densepoints_core
