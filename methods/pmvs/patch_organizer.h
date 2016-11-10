@@ -41,7 +41,7 @@ struct PatchOrganizerOptions {
   size_t max_patches_per_cell;
   size_t grid_scale;
   PatchOrganizerOptions(size_t max_patches_per_cell = 1,
-                        size_t grid_scale = 4)
+                        size_t grid_scale = 8)
     : max_patches_per_cell(max_patches_per_cell),
       grid_scale(grid_scale) { }
 };

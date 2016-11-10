@@ -92,7 +92,7 @@ void Expand::ExpandPatches()
           LOG(INFO) << patch_count << " patches so far";
         }
       }
-      if (patch_count >= 9e5) {
+      if (patch_count >= 1e7) {
         break;
       }
 

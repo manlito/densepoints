@@ -9,7 +9,7 @@ namespace DensePoints {
   namespace PMVS {
     struct ExpandOptions {
       size_t cell_size;
-      ExpandOptions(size_t cell_size = 15)
+      ExpandOptions(size_t cell_size = 11)
         : cell_size(cell_size) { }
     };
 

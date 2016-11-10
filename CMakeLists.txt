@@ -77,8 +77,8 @@ endif()
 # Default build type: Release
 if (NOT CMAKE_BUILD_TYPE AND NOT MSVC)
   set(CMAKE_BUILD_TYPE "Release")
+  message("Using Release configuration")
 endif ()
-
 
 # DensePoints include directories
 include_directories(
@@ -92,7 +92,7 @@ include_directories(
 # Libraries most likely to be frozen
 add_subdirectory(third_party)
 
-# Shared functionality across methos
+# Shared functionality across methods
 add_subdirectory(modules)
 
 # Densification methods implemented

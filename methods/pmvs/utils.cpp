@@ -24,11 +24,11 @@ void PMVS::PrintCloud(const Patches patches,
   property.name = "z";
   properties.push_back(property);
   property.type = rplycpp::PLYDataType::PLY_UCHAR;
-  property.name = "r";
+  property.name = "red";
   properties.push_back(property);
-  property.name = "g";
+  property.name = "green";
   properties.push_back(property);
-  property.name = "b";
+  property.name = "blue";
   properties.push_back(property);
   property.type = rplycpp::PLYDataType::PLY_FLOAT;
   property.name = "nx";

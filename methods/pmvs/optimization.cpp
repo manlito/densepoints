@@ -81,7 +81,7 @@ void Optimization::UnparametrizePatch(double depth, double roll, double pitch,
   const Vector3 &camera_center = (*views_)[patch_.GetReferenceImage()].GetCameraCenter();
   const Vector3 &current_position = patch_.GetPosition();
   position = camera_center + (1 + depth) * (current_position - camera_center);
-  // This method assumes given angles are relative, so that we onlu
+  // This method assumes given angles are relative, so that we only
   // need to compute a rotation after the initial patch angle
   double ca = std::cos(roll);
   double sa = std::sin(roll);
@@ -91,9 +91,6 @@ void Optimization::UnparametrizePatch(double depth, double roll, double pitch,
   rotation.row(0) <<      cb,   0,     -sb;
   rotation.row(1) << sa * sb,  ca, cb * sa ;
   rotation.row(2) << ca * sb, -sa, ca * cb;
-//  rotation.row(0) <<      cb,   0,     -sb;
-//  rotation.row(1) << sa * sb,  ca, cb * sa ;
-//  rotation.row(2) << ca * sb, -sa, ca * cb;
   // Compositional update
   normal = rotation * patch_.GetNormal();
 }
